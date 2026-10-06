@@ -8,6 +8,16 @@
 
 **Input**: User description: "Create the first product specification for the approved WhatsApp Workout Companion."
 
+## Clarifications
+
+### Session 2026-10-06
+
+- Q: When a user sends "start" in WhatsApp, how should the product choose the proposed workout if the routine has a schedule and the user missed or shifted prior sessions? → A: Rotating next-workout sequence based on completed workout history; missed calendar days do not advance or skip the sequence, schedules remain intended frequency/planned days only, and ambiguous starts require user choice.
+- Q: What should happen if a user sends "start" while another workout session is already active? → A: MVP allows only one active workout per user; the product shows the active workout and requires explicit choice to resume, finish, save incomplete, discard, or replace it.
+- Q: For MVP set logging, how should the active exercise advance after the user logs sets? → A: Keep the current exercise active until the user explicitly changes exercise context; planned sets are targets and extra sets remain on the current exercise.
+- Q: For MVP, how should the product record weights when the user omits units or says "each" for dumbbell-style work? → A: Persist unit and load semantics per weighted set; use preferred units only when safe, preserve per-hand/per-side, total, and machine-stack semantics, and compare only matching or explicitly normalized values.
+- Q: For MVP, what should "done" do when the active workout has recorded sets but some planned exercises are unfinished? → A: Treat "done" as a request to end; complete normally only when planned work is completed, skipped, or replaced, otherwise ask to save completed, save incomplete, continue, or discard.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Configure Account, Profile, WhatsApp, And Routine (Priority: P1)
@@ -37,10 +47,12 @@ A linked user starts a workout from WhatsApp using natural language, sees the pl
 
 **Acceptance Scenarios**:
 
-1. **Given** a linked user has exactly one safe planned workout for the current context, **When** they send "gym time", **Then** the product shows the planned exercises and offers to start that workout.
+1. **Given** a linked user has exactly one safe next planned workout in the routine sequence based on completed workout history, **When** they send "gym time", **Then** the product shows the planned exercises and offers to start that workout.
 2. **Given** multiple workouts are plausible for the current context, **When** the user sends "start", **Then** the product asks the user to choose instead of guessing.
 3. **Given** the user chooses to rest or skip today, **When** they confirm that choice, **Then** no workout session is started and no workout is recorded as completed.
 4. **Given** the user makes a temporary change before starting, **When** they confirm the workout, **Then** the change applies only to the current session unless the user explicitly asks to update the permanent plan.
+5. **Given** a user missed one or more planned calendar days, **When** they send "start", **Then** missed calendar days do not automatically skip workouts or advance the routine sequence.
+6. **Given** the user already has an active workout, **When** they send "start", **Then** the product shows the active workout and asks whether to resume, finish, save incomplete, discard, or explicitly replace it.
 
 ---
 
@@ -58,6 +70,8 @@ During an active workout, the user logs one set, multiple sets, or a whole exerc
 2. **Given** an active workout, **When** the user sends "45x10, 45x9, 45x8", **Then** the product records three ordered sets for the intended exercise.
 3. **Given** an active workout, **When** the user sends "bench 80x8 80x8 80x7", **Then** the product associates the sets with bench if that exercise identity is safe in the user's current context.
 4. **Given** a message lacks required numerical values, **When** the missing values cannot be safely inferred from confirmed context, **Then** the product asks for clarification and does not invent workout data.
+5. **Given** the planned set count for the active exercise has been reached, **When** the user logs another set without changing exercise context, **Then** the product records it as an extra set for the current exercise rather than automatically advancing.
+6. **Given** the user logs "45 each 10" for a dumbbell-style exercise, **When** the unit is omitted but the user's preferred unit is safe to apply, **Then** the product records 45, the preferred unit, per-hand/per-side load semantics, and 10 reps.
 
 ---
 
@@ -93,6 +107,8 @@ For each active exercise, the user receives concise planned-target and previous-
 2. **Given** no previous performance exists for the active exercise, **When** context is shown, **Then** the product states that no previous record is available rather than inventing one.
 3. **Given** the user sends "finish workout", "done", or an equivalent completion intent, **When** the workout has recorded data, **Then** the product summarizes exercises completed, sets completed, notable deterministic PRs, and session duration when available.
 4. **Given** a workout has no recorded sets, **When** the user attempts to finish it, **Then** the product confirms whether the user wants to discard, save as incomplete, or continue.
+5. **Given** the user resumes an active workout, **When** they continue logging, **Then** subsequent workout messages apply to the existing active session.
+6. **Given** planned exercises remain unfinished, **When** the user says "done", **Then** the product asks whether to save as completed, save as incomplete, continue workout, or discard workout.
 
 ---
 
@@ -131,11 +147,15 @@ The user can understand what workout data is stored, correct it, export it, and 
 
 - A WhatsApp message arrives from an unlinked identity.
 - A linked user has no configured workout routines.
-- More than one planned workout is plausible for "start" based on schedule or recent history.
+- More than one routine or workout session is plausible for "start" based on routine sequence, explicit user context, schedule, or recent history.
 - The user sends set data before a workout or exercise is active.
+- The user sends "start" while another workout session is active.
 - A message includes approximate or uncertain values such as "around 40 something for 8".
 - A user switches between kg and lb or mentions a unit different from their preferred unit.
+- A weight value omits kg/lb and the preferred-unit fallback is unsafe or ambiguous.
+- A load could be interpreted as per-hand/per-side, total load, or machine-stack load.
 - "Same" is used when no previous set exists in the current context.
+- Planned sets are reached but the user has not explicitly changed exercise context.
 - A correction could refer to more than one recent set, exercise, or workout.
 - A destructive action such as delete is ambiguous.
 - A temporary session change resembles a permanent plan-change request.
@@ -145,6 +165,7 @@ The user can understand what workout data is stored, correct it, export it, and 
 - A history question asks for data outside the user's stored history or data ownership boundary.
 - Analytics depend on custom exercises that do not yet have confirmed muscle classification.
 - A workout is abandoned, partially completed, or completed without all planned exercises.
+- The user says "done" while planned exercises remain unfinished.
 
 ## Requirements *(mandatory)*
 
@@ -161,7 +182,7 @@ The user can understand what workout data is stored, correct it, export it, and 
 - **FR-009**: Users MUST be able to specify planned sets for each planned exercise.
 - **FR-010**: Users MUST be able to specify rep targets or rep ranges for planned exercises.
 - **FR-011**: Users MUST be able to arrange exercise order within a planned workout.
-- **FR-012**: Users MUST be able to configure training frequency or schedule for routines.
+- **FR-012**: Users MUST be able to configure training frequency or schedule for routines; for MVP, schedule represents intended frequency or planned days and MUST NOT override the routine sequence after schedule drift.
 - **FR-013**: The product MUST NOT assume the global exercise library contains every possible exercise or machine.
 - **FR-014**: Users MUST be able to add an exercise or machine that does not exist in the global exercise library.
 - **FR-015**: The product MUST support user-created exercise names and aliases such as "hammer incline", "red chest machine", "new Atlantis press", and "gym rear delt machine".
@@ -169,22 +190,39 @@ The user can understand what workout data is stored, correct it, export it, and 
 - **FR-017**: The product MUST NOT merge or mix progression history across distinct exercise identities unless the user confirms the mapping.
 - **FR-018**: The product MAY assist users with classifying or understanding custom exercises, but the confirmed user-specific identity MUST remain stable.
 - **FR-019**: A linked user MUST be able to start a workout from WhatsApp using natural language such as "start", "let's start", "gym time", or "start workout".
-- **FR-020**: The product MUST determine the relevant planned workout from confirmed user context when confidence is sufficient.
+- **FR-020**: For MVP, when a linked user sends a start intent without naming a workout, the product MUST propose the next planned workout in the routine sequence based on completed workout history rather than strictly using the calendar day.
 - **FR-021**: The product MUST ask for clarification when the correct workout cannot be determined safely.
 - **FR-022**: Before or when starting a workout, the product MUST show the planned exercises for the proposed session.
 - **FR-023**: Before or when starting a workout, users MUST be able to start the planned workout, make a temporary change, choose another appropriate workout, or skip/rest.
 - **FR-024**: Temporary workout changes MUST NOT silently modify the permanent workout plan.
+- **FR-024a**: Missed calendar days MUST NOT automatically skip planned workouts or advance the routine sequence.
+- **FR-024b**: Users MUST be able to explicitly choose a different workout for the current session without permanently changing the routine sequence unless they explicitly request a permanent change.
+- **FR-024c**: For MVP, the product MUST allow only one active workout session per user.
+- **FR-024d**: If a user sends a start intent while a workout is active, the product MUST NOT create a second active session or silently modify the existing one; it MUST show the active workout and require the user to choose resume, finish, save incomplete, discard, or replace.
+- **FR-024e**: Replacing an active workout with a new workout MUST require explicit user intent.
+- **FR-024f**: When the user resumes an active workout, subsequent workout messages MUST continue against that existing active session.
 - **FR-025**: For the active exercise, the product MUST provide concise context including exercise name and planned sets or rep target.
 - **FR-026**: For the active exercise, the product MUST provide previous workout performance when available from persisted history.
 - **FR-027**: Previous-performance context MUST be concise enough for active gym use.
 - **FR-028**: Users MUST be able to log workout sets using natural language.
 - **FR-029**: Set logging MUST support single-set examples including "45x10", "45 kg x 10", "45 each 10", "45kg for 10", "same x 9", and "50x8 failed the 9th".
-- **FR-030**: For each safely interpreted set, the product MUST preserve structured values for exercise, set order, weight, unit, and reps where known.
+- **FR-030**: For each safely interpreted set, the product MUST preserve structured values for exercise, set order, weight, unit, load semantics, and reps where known.
+- **FR-030a**: For MVP, supported load semantics for weighted sets MUST include at least unspecified/default, per-hand/per-side, total load, and machine stack.
+- **FR-030b**: If the user omits kg/lb, the product MUST use the user's preferred unit only when the exercise and set context are otherwise safe and unambiguous.
+- **FR-030c**: The product MUST interpret "each" in supported set notation as per-hand/per-side load when the exercise context is safe.
+- **FR-030d**: The product MUST NOT automatically convert per-hand/per-side values into combined total load for durable history.
+- **FR-030e**: A selectorized-machine value MAY be stored as machine-stack load when that semantic is known from confirmed exercise context.
+- **FR-030f**: Previous-performance comparisons and PR detection MUST compare matching unit and load semantics unless values have been explicitly and safely normalized.
+- **FR-030g**: If load semantics are materially ambiguous and would affect durable history, previous-performance comparison, or PR detection, the product MUST ask for clarification rather than guessing.
 - **FR-031**: The product MUST NOT invent missing numerical values.
 - **FR-032**: The product MUST ask for clarification when confidence is insufficient for an action affecting durable workout history.
 - **FR-033**: Users MUST be able to log multiple sets in one message.
 - **FR-034**: Multiple-set logging MUST support messages such as "45x10, 45x9, 45x8" and "bench 80x8 80x8 80x7" when intent is clear.
-- **FR-035**: The product MUST leave room for whole-exercise logging when the user's intent is clear.
+- **FR-035**: The product MUST keep the current exercise active until the user explicitly changes exercise context by saying "next", naming or selecting another exercise, asking to do another exercise first, skipping, replacing, or finishing the workout.
+- **FR-035a**: Reaching the planned set count MUST NOT automatically advance the active exercise because planned sets are targets, not proof that the user is finished.
+- **FR-035b**: When the planned set count is reached, the product MAY concisely suggest the next planned exercise, but it MUST NOT change the active exercise until the user explicitly transitions.
+- **FR-035c**: Extra sets beyond the planned count MUST be allowed and remain associated with the current active exercise until the user explicitly transitions.
+- **FR-035d**: The product MUST leave room for whole-exercise logging when the user's intent is clear.
 - **FR-036**: Users MUST be able to correct previously captured data using natural language.
 - **FR-037**: Corrections MUST update the intended existing record rather than silently creating another set.
 - **FR-038**: The product MUST ask for clarification when the target of a correction is ambiguous.
@@ -202,6 +240,14 @@ The user can understand what workout data is stored, correct it, export it, and 
 - **FR-050**: Users MUST be able to finish a workout naturally from WhatsApp.
 - **FR-051**: On workout completion, the product MUST provide a concise summary containing relevant recorded data, such as exercises completed, sets completed, notable deterministic PRs, and session duration where available.
 - **FR-052**: The product MUST NOT invent workout-completion metrics that were not captured or deterministically calculated.
+- **FR-052a**: The product MUST treat "done" or equivalent completion intent as an explicit request to end the current workout.
+- **FR-052b**: If all planned work has been completed, skipped, or replaced, the product MAY complete the workout normally.
+- **FR-052c**: If planned exercises remain unfinished, the product MUST NOT silently mark the workout completed; it MUST ask the user to choose save as completed, save as incomplete, continue workout, or discard workout.
+- **FR-052d**: Saving as completed MUST mean the user intentionally considers the session complete despite unfinished planned items.
+- **FR-052e**: Saving as incomplete MUST preserve recorded workout data while marking the session incomplete.
+- **FR-052f**: Continuing workout MUST keep the same active workout session.
+- **FR-052g**: Discarding workout MUST remove or abandon the current session according to the product's defined discard behavior.
+- **FR-052h**: Completion status MUST be explicit and deterministic because it affects workout history, adherence analytics, summaries, and future scheduling.
 - **FR-053**: Users MUST be able to review past workouts.
 - **FR-054**: Users MUST be able to review exercise history, previous weights and reps, and progression over time.
 - **FR-055**: The web product MUST support detailed workout-history review.
@@ -233,12 +279,12 @@ The user can understand what workout data is stored, correct it, export it, and 
 - **User Account**: Represents the product user and owns profile information, preferred units, WhatsApp link, routines, workout history, custom exercises, exports, and deletion requests.
 - **WhatsApp Identity Link**: Represents the confirmed association between a WhatsApp identity and one product account for authorization, ownership, and message routing.
 - **Workout Profile**: Represents basic workout-tracking preferences such as preferred weight unit and any minimal profile attributes required for workout history and analytics.
-- **Routine**: Represents an existing training program configured by the user, including one or more named workout sessions and a training frequency or schedule.
+- **Routine**: Represents an existing training program configured by the user, including one or more named workout sessions, their rotating sequence order, and a training frequency or schedule used as intended timing rather than the sole source of workout selection.
 - **Workout Session Template**: Represents a named planned workout day or session within a routine, including ordered planned exercises, planned sets, and rep targets or ranges.
 - **Exercise Identity**: Represents either a known exercise or a stable user-specific custom exercise or machine. It may include user aliases, primary and secondary muscle groups, and movement or exercise family.
 - **Planned Exercise**: Represents an exercise inside a planned session, including order, planned sets, and rep target.
-- **Active Workout Session**: Represents a started workout, its selected plan, temporary session-only changes, active exercise, logged sets, skipped items, completion status, and duration where available.
-- **Workout Set**: Represents a recorded set with exercise identity, set order, weight, unit, reps, and any supported notes such as failed attempt context.
+- **Active Workout Session**: Represents a started workout, its selected plan, temporary session-only changes, active exercise, logged sets, skipped items, completion status, and duration where available. For MVP, at most one Active Workout Session may be active per user at a time.
+- **Workout Set**: Represents a recorded set with exercise identity, set order, weight, unit, load semantics, reps, and any supported notes such as failed attempt context.
 - **Correction**: Represents an update or deletion applied to an existing workout record, including the targeted record and resulting structured change.
 - **History Answer**: Represents a bounded response to a user question that is grounded in persisted workout data.
 - **Personal Record**: Represents a deterministic achievement derived from persisted workout history, such as highest recorded weight or highest reps at a given weight.
@@ -251,7 +297,7 @@ The user can understand what workout data is stored, correct it, export it, and 
 
 - **SC-001**: At least 80% of pilot users can configure an existing routine, connect WhatsApp, start a workout, and complete one full planned workout without needing the web dashboard during the session.
 - **SC-002**: At least 70% of pilot users report that in-session logging feels lower-friction than their current method after completing one normal training week.
-- **SC-003**: At least 90% of reviewed logged set entries in pilot workouts correctly preserve exercise identity, set order, weight, unit, and reps after user review and correction.
+- **SC-003**: At least 90% of reviewed logged set entries in pilot workouts correctly preserve exercise identity, set order, weight, unit, load semantics, and reps after user review and correction.
 - **SC-004**: Pilot users average fewer than 1 clarification or correction per 10 logged sets, excluding intentional first-time custom exercise creation.
 - **SC-005**: At least 80% of returning pilot workouts show useful previous-performance context for at least one exercise with prior history.
 - **SC-006**: At least 80% of bounded WhatsApp history questions in pilot testing are answered from persisted workout data or safely declined when data is unavailable.
@@ -266,11 +312,11 @@ The user can understand what workout data is stored, correct it, export it, and 
 - The first usable product is evaluated as a pilot-level product; numeric success thresholds are assumptions until validated with real users.
 - WhatsApp is the in-session surface for lightweight capture, correction, previous-performance context, and bounded history questions.
 - The web product is the surface for setup, detailed history review, analytics, stored-data review, correction-heavy workflows, export, and deletion paths.
-- Users may train with kg or lb, and their preferred unit provides the default when a message omits a unit and context is otherwise safe.
+- Users may train with kg or lb, and their preferred unit provides the default when a message omits a unit and the exercise and set context are otherwise safe.
 - Detailed supported notation remains subject to future clarification; the first version must support the examples explicitly listed in this specification.
 - Warmups, supersets, drop sets, RPE/RIR, and failure-set semantics remain open for later clarification unless they can be captured safely as simple notes without changing core set data.
 - Session duration is available only when the product has enough start and finish information to calculate it.
 - Straightforward PR detection is limited to deterministic records from persisted data until more detailed PR semantics are clarified.
 - Muscle classification supports useful first-version analytics but does not require exhaustive global coverage or fractional volume calculations.
 - Privacy, retention, model-training, and third-party processing commitments require later definition before production release; this specification only requires understandable review, correction, export, and deletion paths.
-- Launch country, pricing model, willingness to pay, WhatsApp messaging economics, acceptable AI error threshold, reminder behavior, missed-schedule handling, and whether progression recommendations are necessary for retention remain carried-forward open questions.
+- Launch country, pricing model, willingness to pay, WhatsApp messaging economics, acceptable AI error threshold, reminder behavior, and whether progression recommendations are necessary for retention remain carried-forward open questions.
