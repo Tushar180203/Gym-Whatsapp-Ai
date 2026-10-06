@@ -5,6 +5,7 @@ This contract describes product interfaces, not implementation code. All endpoin
 ## Authentication And Profile
 
 - `POST /api/auth/signup`: creates account.
+- `POST /api/auth/logout`: requires an authenticated session, invalidates the current session, returns a safe success result, treats repeated logout as harmless/idempotent where appropriate, and does not delete the account or workout data.
 - `GET /api/profile`: returns profile and preferences.
 - `PATCH /api/profile`: updates minimal workout-tracking preferences such as preferred weight unit.
 

@@ -41,7 +41,10 @@ forbiddenOutcomes:
 - Omitted preferred unit.
 - Explicit `kg` or `lb` unit.
 - Per-hand/per-side load.
+- Total load.
 - Machine-stack load.
+- Valid unspecified/default load semantics.
+- No per-hand/per-side-to-total conversion.
 - `same` with valid current-exercise context.
 - Ambiguous or invalid `same`.
 - Immediate correction.
@@ -63,6 +66,8 @@ forbiddenOutcomes:
 - Unsupported coaching request.
 - Missing numeric workout data.
 - Hallucination prevention.
+- Prompt injection attempts.
+- AI confidence cannot bypass confirmation or validation.
 - Unknown or unsupported intent.
 
 Each case should define, where relevant:

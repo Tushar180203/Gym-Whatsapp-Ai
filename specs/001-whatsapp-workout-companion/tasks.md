@@ -10,7 +10,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 **Tests**: Required by the constitution and plan. Test, integration, webhook, Playwright, and eval tasks are placed with the feature behavior they validate.
 
-**Organization**: Tasks are grouped by incremental user-story slices. The first usable vertical slice proves only: create authenticated user -> create routine -> link or simulate a linked messaging identity through the approved ownership path -> start workout -> log deterministic sets -> finish workout -> persist/read history.
+**Organization**: Tasks are grouped by incremental user-story slices. The first usable vertical slice proves only: create authenticated user -> create routine -> create short-lived WhatsApp link token -> consume it through the normalized inbound provider-scoped identity path -> start workout from the linked identity -> log deterministic sets -> finish workout -> persist/read history.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -43,7 +43,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 **Critical**: No user-story implementation starts until this phase is complete.
 
-- [ ] T011 Define shared enums and Zod primitives for `WeightUnit` values `KG|LB`, `LoadSemantics` values `UNSPECIFIED_DEFAULT|PER_HAND_PER_SIDE|TOTAL_LOAD|MACHINE_STACK`, workout/session/set statuses, inbound processing statuses `RECEIVED|PROCESSING|COMPLETED|RETRYABLE_FAILED`, confirmations, and data-control types in `packages/contracts/src/domain/enums.ts` [Trace: Data Model Enumerations, AI Actions Common Types, Messaging Deduplication]
+- [ ] T011 Define shared enums and Zod primitives for `WeightUnit` values `KG|LB`, `LoadSemantics` values `UNSPECIFIED_DEFAULT|PER_HAND_PER_SIDE|TOTAL_LOAD|MACHINE_STACK`, workout/session/set statuses, inbound processing statuses `RECEIVED|PROCESSING|COMPLETED|FAILED_RETRYABLE`, confirmations, and data-control types in `packages/contracts/src/domain/enums.ts` [Trace: Data Model Enumerations, AI Actions Common Types, Messaging Deduplication]
 - [ ] T012 Define `ProposedActionEnvelope` and all discriminated AI action Zod schemas with `schemaVersion: "workout-action.v1"` and `forbiddenDirectMutation: true` in `packages/contracts/src/ai/actions.ts` [Trace: Contract ai-actions.md, FR-070-FR-072]
 - [ ] T013 [P] Define web/API request and response schemas for profile, WhatsApp linking, routines, exercises, workouts, analytics, export, deletion, and webhook normalized messages in `packages/contracts/src/api/*.ts` [Trace: Contract api.md]
 - [ ] T014 [P] Define provider-independent messaging interfaces and inbound/outbound result types in `packages/messaging/src/interfaces.ts` [Trace: Contract messaging.md, Plan WhatsApp Integration]
@@ -83,7 +83,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 ### Implementation for User Story 1
 
 - [ ] T034 [P] [US1] Implement account signup using the selected real secure session implementation and authenticated user context in `apps/web/server/auth.ts` and `apps/web/app/api/auth/signup/route.ts` [Trace: T003, T020, FR-001, Contract POST /api/auth/signup]
-- [ ] T035 [P] [US1] Implement auth logout route that invalidates the current session in `apps/web/app/api/auth/logout/route.ts` [Trace: T020, secure sessions, Constitution XII]
+- [ ] T035 [P] [US1] Implement `POST /api/auth/logout` route that requires the current authenticated session, invalidates that session, returns a safe idempotent success result for repeated logout where appropriate, and never deletes account or workout data in `apps/web/app/api/auth/logout/route.ts` [Trace: T020, Contract POST /api/auth/logout, secure sessions, Constitution XII]
 - [ ] T036 [P] [US1] Implement profile service with `preferredWeightUnit` required for workout logging fallback and profile fields limited to defined journeys in `packages/domain/src/profile/profile-service.ts` [Trace: FR-002-FR-003, Data Model UserProfile validation]
 - [ ] T037 [US1] Implement profile API routes in `apps/web/app/api/profile/route.ts` [Trace: FR-002-FR-003, Contract GET/PATCH /api/profile]
 - [ ] T038 [P] [US1] Implement short-lived single-use WhatsApp link token creation, status, revoke, and test-only linked-identity fixture helpers without web-only identity binding in `packages/domain/src/messaging/link-service.ts` [Trace: FR-004, Data Model AccountLinkToken and WhatsAppIdentityLink]
@@ -94,7 +94,10 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 - [ ] T043 [US1] Implement routine service for routines, templates, planned exercises, positive `plannedSetCount`, exact/range rep targets, unique order, schedule metadata, and routine sequence cursor creation in `packages/domain/src/routines/routine-service.ts` [Trace: FR-006-FR-012, Data Model Routine, WorkoutSessionTemplate, PlannedExercise, RoutineSequenceCursor]
 - [ ] T044 [US1] Implement routine API routes in `apps/web/app/api/routines/route.ts` and `apps/web/app/api/routines/[routineId]/route.ts` [Trace: FR-006-FR-012, Contract Routines]
 - [ ] T045 [US1] Implement exercise and alias API routes in `apps/web/app/api/exercises/route.ts`, `apps/web/app/api/exercises/custom/route.ts`, `apps/web/app/api/exercises/[exerciseId]/route.ts`, `apps/web/app/api/exercises/[exerciseId]/aliases/route.ts`, `apps/web/app/api/exercises/[exerciseId]/classification/route.ts`, and `apps/web/app/api/exercises/merge-request/route.ts` [Trace: FR-013-FR-018h, Contract Exercises And Aliases]
-- [ ] T046 [US1] Build minimal web onboarding, WhatsApp token management, routine editor, exercise alias, and classification screens in `apps/web/app/(product)/onboarding/page.tsx`, `apps/web/app/(product)/routines/page.tsx`, and `apps/web/components/routines/*.tsx` [Trace: US1, FR-001-FR-018h]
+- [ ] T046 [US1] Build minimal web onboarding and route/page shells for setup and routine management in `apps/web/app/(product)/onboarding/page.tsx` and `apps/web/app/(product)/routines/page.tsx` [Trace: US1, FR-001-FR-012]
+- [ ] T046A [US1] Build WhatsApp token management UI and API integration states for link status, token creation, revoke, expiry, and ownership-safe errors in `apps/web/components/whatsapp/link-token-manager.tsx` [Trace: US1, FR-004-FR-005]
+- [ ] T046B [US1] Build routine editor form/state interactions for sessions, planned exercises, planned sets, rep targets, order, and frequency in `apps/web/components/routines/routine-editor.tsx` [Trace: US1, FR-006-FR-012]
+- [ ] T046C [US1] Build exercise alias and classification form/state interactions with conflict, confirmation, and uncertain-classification states in `apps/web/components/routines/exercise-identity-controls.tsx` [Trace: US1, FR-013-FR-018h, FR-064-FR-066d]
 
 **Checkpoint**: Account, preferred units, WhatsApp link-token management, routines, stable exercise identities, aliases, and routine edits are independently testable without claiming provider identity E2E linking yet.
 
@@ -122,7 +125,8 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 - [ ] T055 [P] [US2] Implement WhatsApp Cloud inbound adapter verification and payload normalization in `packages/messaging/src/whatsapp/inbound-adapter.ts` [Trace: Contract messaging.md Inbound Flow, FR-005]
 - [ ] T056 [P] [US2] Implement WhatsApp outbound adapter interface implementation and outbound result persistence boundary in `packages/messaging/src/whatsapp/outbound-adapter.ts` [Trace: Contract messaging.md Outbound Flow]
 - [ ] T057 [US2] Implement inbound link-token consumption from verified provider messages before any workout mutation in `packages/domain/src/messaging/link-token-consumer.ts` [Trace: FR-004-FR-005, Plan Security WhatsApp linking]
-- [ ] T058 [US2] Implement inbound message processing lifecycle for `RECEIVED`, `PROCESSING`, `COMPLETED`, and `RETRYABLE_FAILED`, including command already durably applied, outbound response persisted, outbound already sent, crash after command commit before outbound send, and duplicate webhook recovery/reuse without duplicate mutations in `packages/domain/src/messaging/inbound-message-processor.ts` [Trace: Plan Concurrency And Idempotency, Messaging Deduplication, CommandExecution, OutboundMessage]
+- [ ] T058 [US2] Implement inbound message processing lifecycle for `RECEIVED`, `PROCESSING`, `COMPLETED`, and `FAILED_RETRYABLE`, including command already durably applied, outbound response persisted, outbound already sent, crash after command commit before outbound send, and duplicate webhook recovery/reuse without duplicate mutations in `packages/domain/src/messaging/inbound-message-processor.ts` [Trace: Plan Concurrency And Idempotency, Messaging Deduplication, CommandExecution, OutboundMessage]
+- [ ] T058A [US2] Add core messaging idempotency integration tests for first inbound processing, exact duplicate provider delivery, in-flight duplicate safe handling, retryable failure retry, command already durably applied result reuse, crash after command commit before outbound send, persisted outbound recovery/send, already-sent outbound not duplicated, and concurrent same-user mutation not creating duplicate sets/state in `tests/integration/messaging/core-idempotency.test.ts` [Trace: T058, Messaging Deduplication, CHK029-CHK031; blocks US3]
 - [ ] T059 [US2] Implement WhatsApp webhook routes in `apps/web/app/api/webhooks/whatsapp/route.ts` [Trace: Contract Webhook, Quickstart Webhook Security Validation]
 - [ ] T060 [US2] Implement concise WhatsApp start/proposal/ambiguity/active-workout response formatting in `apps/web/server/whatsapp/response-formatters.ts` [Trace: FR-022-FR-023, FR-027]
 
@@ -138,8 +142,8 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 ### Tests for User Story 3
 
-- [ ] T061 [P] [US3] Add deterministic parser unit tests for `45x10`, `45 kg x 10`, `45 each 10`, `45kg for 10`, `same x 9`, failed-attempt notes, missing values, and unsafe unit fallback in `packages/domain/src/parser/set-parser.test.ts` [Trace: US3, FR-028-FR-031, Quickstart Deterministic Parser Validation]
-- [ ] T062 [P] [US3] Add multi-set and idempotency tests for `45x10, 45x9, 45x8`, `bench 80x8 80x8 80x7`, duplicate webhook replay, and retry after partial creation in `packages/domain/src/workouts/log-set-command.test.ts` [Trace: FR-033-FR-034, Messaging Deduplication, idempotency/retry tests]
+- [ ] T061 [P] [US3] Add deterministic parser unit tests for `45x10`, `45 kg x 10`, `45 lb x 10`, `45 each 10`, `45kg for 10`, `same x 9`, failed-attempt notes, missing numeric values, preferred-unit fallback when safe, unsafe omitted-unit clarification/failure, valid `UNSPECIFIED_DEFAULT`, `PER_HAND_PER_SIDE`, `TOTAL_LOAD`, and `MACHINE_STACK` resolution in `packages/domain/src/parser/set-parser.test.ts` [Trace: US3, FR-028-FR-031, Quickstart Deterministic Parser Validation]
+- [ ] T062 [P] [US3] Add multi-set, load-comparison, and idempotency tests for `45x10, 45x9, 45x8`, `bench 80x8 80x8 80x7`, KG/LB handling, `each` mapping to `PER_HAND_PER_SIDE`, no per-side-to-total conversion, incompatible load semantics not comparable, duplicate webhook replay, and retry after partial creation in `packages/domain/src/workouts/log-set-command.test.ts` [Trace: FR-030a-FR-034, Messaging Deduplication, idempotency/retry tests]
 - [ ] T063 [P] [US3] Add active-exercise sequencing tests proving planned set count does not auto-advance and extra sets stay on current exercise in `packages/domain/src/workouts/active-exercise-context.test.ts` [Trace: FR-035-FR-035c, active exercise context requirements]
 
 ### Implementation for User Story 3
@@ -150,7 +154,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 - [ ] T067 [US3] Implement multi-set command execution using inbound message id plus action index idempotency keys in `packages/domain/src/workouts/log-multiple-sets-command.ts` [Trace: FR-033-FR-034, Messaging Deduplication]
 - [ ] T068 [US3] Implement active exercise context service where logging may mark `SessionExercise` `IN_PROGRESS` but never auto-advances `WorkoutSession.activeSessionExerciseId` in `packages/domain/src/workouts/active-exercise-context.ts` [Trace: FR-035-FR-035c, Data Model SessionExercise]
 - [ ] T069 [US3] Wire deterministic fast-path set logging into inbound message processor before AI interpretation and after pending-confirmation resolution in `packages/domain/src/messaging/inbound-message-processor.ts` [Trace: Plan Execution Flow, PendingConfirmation, Constitution II]
-- [ ] T070 [US3] Implement workout session and set API routes for active workout read, start, resume, set create, set patch, set delete, finish, discard, and history read in `apps/web/app/api/workouts/route.ts`, `apps/web/app/api/workouts/active/route.ts`, `apps/web/app/api/workouts/[workoutId]/route.ts`, `apps/web/app/api/workouts/[workoutId]/sets/route.ts`, `apps/web/app/api/workouts/[workoutId]/sets/[setId]/route.ts`, `apps/web/app/api/workouts/[workoutId]/finish/route.ts`, `apps/web/app/api/workouts/[workoutId]/discard/route.ts`, and `apps/web/app/api/history/workouts/route.ts` [Trace: Contract Workout Sessions And Sets, FR-028-FR-035c]
+- [ ] T070 [US3] Implement workout session and set API routes for active workout read, start, resume, set create, set patch, set delete, finish, discard, and history read in `apps/web/app/api/workouts/active/route.ts`, `apps/web/app/api/workouts/start/route.ts`, `apps/web/app/api/workouts/[workoutId]/route.ts`, `apps/web/app/api/workouts/[workoutId]/resume/route.ts`, `apps/web/app/api/workouts/[workoutId]/sets/route.ts`, `apps/web/app/api/workouts/[workoutId]/sets/[setId]/route.ts`, `apps/web/app/api/workouts/[workoutId]/finish/route.ts`, `apps/web/app/api/workouts/[workoutId]/discard/route.ts`, and `apps/web/app/api/workouts/history/route.ts` [Trace: Contract Workout Sessions And Sets, FR-028-FR-035c]
 - [ ] T071 [US3] Add concise WhatsApp set-logging responses and clarification responses in `apps/web/server/whatsapp/response-formatters.ts` [Trace: FR-027, FR-032]
 
 **Checkpoint**: Deterministic workout logging can safely mutate structured workout history without AI.
@@ -161,12 +165,12 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 **Goal**: Finish or save a workout after deterministic set logging and read persisted history without requiring previous-performance or PR services.
 
-**Independent Test**: Create authenticated user, create routine, link or simulate linked messaging identity through the approved ownership path, start workout, log deterministic sets, finish workout, and read persisted history.
+**Independent Test**: Create authenticated user, create routine, create a short-lived WhatsApp link token, consume it through the normalized inbound provider-scoped identity path, start workout from the linked identity, log deterministic sets, finish workout, and read persisted history.
 
 ### Tests for Minimal Vertical Slice
 
 - [ ] T072 [P] Add finish-workout tests for no recorded sets, all planned work complete/skipped/replaced, unfinished planned work choices, save incomplete, discard, resume, and duration availability in `packages/domain/src/workouts/finish-workout-command.test.ts` [Trace: FR-050-FR-052h, Quickstart Core Validation Scenario]
-- [ ] T073 [P] Add integration test for the first usable vertical slice in `tests/integration/vertical-slices/create-routine-start-log-finish-history.test.ts` [Trace: User request first usable vertical slice, SC-001]
+- [ ] T073 [P] Add integration test for the first usable vertical slice proving authenticated product user -> short-lived WhatsApp link token -> normalized inbound provider-scoped identity message using the token -> token consumption -> stable `providerUserIdentityHash` to product-user link -> linked identity starts, logs deterministic sets, finishes workout, and reads persisted history through real application linking flow in `tests/integration/vertical-slices/create-routine-link-start-log-finish-history.test.ts` without live Meta API calls or pre-simulated linked identity acceptance [Trace: User request first usable vertical slice, SC-001, FR-004-FR-005]
 
 ### Implementation for Minimal Vertical Slice
 
@@ -184,7 +188,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 **Purpose**: Add the minimum AI interpretation infrastructure, eval schema/loader, provider adapter, and executable eval command before AI-dependent WhatsApp behavior or fixtures claim to be usable.
 
 - [ ] T078 [P] Create eval case schema, loader, and pass/fail reporter for `eval-case.v1` in `packages/evals/src/eval-case-schema.ts` and `packages/evals/src/runner.ts` [Trace: Contract eval-cases.md Case Shape and Pass Criteria]
-- [ ] T079 [P] Add base eval fixture index covering required categories without story-specific fixture execution claims in `packages/evals/fixtures/intent/index.yaml` [Trace: Contract eval-cases.md Required Coverage, Constitution IX]
+- [ ] T079 Add executable `eval-case.v1` fixture suites after T078 creates the schema/loader for deterministic/AI boundary set and exercise-identity behavior in `packages/evals/fixtures/intent/set-load-behavior.yaml` and `packages/evals/fixtures/intent/exercise-identity.yaml`, covering simple set, multiple sets, omitted unit, explicit KG, explicit LB, per-hand/per-side, total load, machine stack, valid unspecified/default semantics, no per-side-to-total conversion, valid `same`, ambiguous/invalid `same`, missing numeric values, confirmed alias reuse, alias conflict, first-time unknown/custom exercise, similar exercise separation, and no automatic merge, with conversation context, user input, expected action, expected fields, clarification, confirmation requirement, and forbidden outcomes where relevant [Trace: T078, Contract eval-cases.md Required Coverage, Constitution IX]
 - [ ] T080 Implement provider-independent `IntentInterpreter`, `StructuredOutputClient`, `AiProviderError`, `AiSchemaError`, `AiRateLimitError`, and `PromptRegistry` interfaces in `packages/ai/src/interfaces.ts` [Trace: Plan AI Provider, Constitution XIII]
 - [ ] T081 Implement prompt registry with strict role separation and user text as untrusted data in `packages/ai/src/prompt-registry.ts` [Trace: Plan Security prompt injection controls, Research Treat User Text As Untrusted Prompt Data]
 - [ ] T082 Record/select the initial production AI provider and model according to the criteria in plan/research and eval readiness in `specs/001-whatsapp-workout-companion/research.md` and `specs/001-whatsapp-workout-companion/plan.md` [Trace: Research Structured Output Support, Open Technical Questions, Constitution XV]
@@ -194,7 +198,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 - [ ] T086 Add adapter contract tests for provider success, schema mismatch, provider errors, timeout/rate-limit mapping, and no provider types leaking into domain in `packages/ai/src/providers/structured-output-client.contract.test.ts` [Trace: Plan AI Provider, Constitution XIII]
 - [ ] T087 Add `eval` command wiring, CI-ready offline eval report output, and mandatory AI-regression gate documentation in `packages/evals/package.json` and `package.json` [Trace: Quickstart Expected Commands, Constitution IX]
 - [ ] T088 Add opt-in real-provider smoke/eval command that is skipped by default in normal offline unit tests in `packages/evals/package.json` and `packages/evals/src/real-provider-smoke.ts` [Trace: T082 decision, Research Structured Output Support, Constitution XVIII]
-- [ ] T089 Add integration tests proving invalid AI schema, low confidence, prompt-injection text, provider failure, and forbidden direct mutation cannot bypass deterministic validation in `tests/integration/ai/ai-boundary.test.ts` [Trace: CHK032-CHK035, Constitution III-IV]
+- [ ] T089 Add integration tests proving invalid AI schema, low confidence, prompt-injection text, provider failure, forbidden direct mutation, and AI confidence cannot bypass deterministic validation, authorization, required clarification, destructive confirmation, or permanent-change confirmation in `tests/integration/ai/ai-boundary.test.ts` [Trace: CHK032-CHK035, Constitution III-IV]
 
 **Checkpoint**: AI interpretation and evals are executable as infrastructure, but durable mutations still flow through deterministic validation and command handlers.
 
@@ -208,10 +212,10 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 ### Tests for User Story 4
 
-- [ ] T090 [P] [US4] Add correction-policy tests for active-workout quick correction, correction after switching exercise, ambiguous correction, completed-history confirmation, and web completed-history edit in `packages/domain/src/corrections/correction-policy.test.ts` [Trace: FR-036-FR-039g, required correction cases]
+- [ ] T090 [P] [US4] Add correction-policy tests for active-workout quick correction, correction after switching exercise, explicit older named exercise/set reference and ordinal set reference such as `incline set 2 was actually 10` while another exercise is active, ambiguous correction requiring clarification, completed-history confirmation, and web completed-history edit in `packages/domain/src/corrections/correction-policy.test.ts` [Trace: FR-036-FR-039g, required correction cases]
 - [ ] T091 [P] [US4] Add destructive mutation confirmation-policy tests for older set deletion, entire exercise deletion, entire workout deletion, substantial history deletion, identity merge, and permanent routine change in `packages/domain/src/confirmations/destructive-policy.test.ts` [Trace: FR-039e-FR-039f, FR-049e-FR-049f, permanent/destructive mutation tests]
 - [ ] T092 [P] [US4] Add session mutation tests for reorder, skip, replace, add exercise, unknown exercise confirmation, today-only scope, permanent scope, and ambiguous scope in `packages/domain/src/workouts/session-mutation-commands.test.ts` [Trace: FR-040-FR-049f, session-only change requirements]
-- [ ] T093 [P] [US4] Add executable eval fixtures for immediate correction, correction after moving exercises, ambiguous correction, delete last set, destructive deletion confirmation, first-time custom exercise, alias conflict, session-only change, permanent change, and ambiguous scope in `packages/evals/fixtures/intent/us4-corrections-session-changes.yaml` [Trace: T078, T087, Contract eval-cases.md, AI-related eval cases]
+- [ ] T093 [P] [US4] Add executable `eval-case.v1` fixtures for immediate correction, correction after moving exercises, explicit older named/numbered set correction, ambiguous correction, delete last set, destructive deletion confirmation, session-only change, explicit permanent change, and ambiguous session-versus-permanent scope in `packages/evals/fixtures/intent/us4-corrections-session-changes.yaml`, including expected action, fields, clarification, confirmation requirement, and forbidden outcomes where relevant [Trace: T078, T087, Contract eval-cases.md, AI-related eval cases]
 
 ### Implementation for User Story 4
 
@@ -238,7 +242,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 - [ ] T102 [P] [US5] Add previous-performance tests for exact confirmed exercise identity, confirmed alias, comparable unit/load semantics, no similar-exercise substitution, and no prior history in `packages/analytics/src/previous-performance-service.test.ts` [Trace: FR-025-FR-027d, CHK036]
 - [ ] T103 [P] [US5] Add personal-record tests for highest load, highest reps at same load, corrected data, soft-deleted exclusion, no estimated 1RM, and session-only substitution independent history in `packages/analytics/src/personal-record-service.test.ts` [Trace: FR-056-FR-057b, CHK037]
-- [ ] T104 [P] [US5] Add executable eval fixtures for start intents, ambiguous starts, active-workout start, session-only change, permanent routine request, and ambiguous session-versus-permanent change in `packages/evals/fixtures/intent/us5-context-pr.yaml` [Trace: T078, T087, Contract eval-cases.md, FR-019-FR-027d, FR-049a-FR-049e]
+- [ ] T104 [P] [US5] Add executable `eval-case.v1` fixtures for start intents, ambiguous starts, active-workout start, exact previous-performance lookup, no exact prior history, session-only change, permanent routine request, and ambiguous session-versus-permanent change in `packages/evals/fixtures/intent/us5-context-pr.yaml` [Trace: T078, T087, Contract eval-cases.md, FR-019-FR-027d, FR-049a-FR-049e]
 
 ### Implementation for User Story 5
 
@@ -260,7 +264,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 - [ ] T108 [P] [US6] Add analytics tests for workout frequency, completed workout count, monthly workout count, weekly primary-muscle set count, last-trained dates, custom uncertain exclusion, and corrected classification inclusion in `packages/analytics/src/workout-analytics-service.test.ts` [Trace: FR-061-FR-066d, Quickstart Analytics Validation]
 - [ ] T109 [P] [US6] Add history-question tests for last named workout/session, exact exercise last time, best set, ambiguous reference clarification, missing data safe response, and unsupported coaching boundary in `packages/analytics/src/history-question-service.test.ts` [Trace: FR-058-FR-060d, CHK039]
-- [ ] T110 [P] [US6] Add executable eval fixtures for bounded history question, bounded analytics question, unsupported coaching request, ambiguous reference, missing data, and hallucination prevention in `packages/evals/fixtures/intent/us6-history-analytics.yaml` [Trace: T078, T087, Contract eval-cases.md, FR-058-FR-060d]
+- [ ] T110 [P] [US6] Add executable `eval-case.v1` fixtures for bounded history question, bounded analytics question, unsupported coaching request, unknown/unsupported intent, ambiguous reference, missing data, hallucination prevention, prompt injection attempts, and AI confidence not bypassing confirmation or validation in `packages/evals/fixtures/intent/us6-history-analytics-safety.yaml` [Trace: T078, T087, Contract eval-cases.md, FR-058-FR-060d, Constitution III-IV]
 - [ ] T111 [P] [US6] Add Playwright test for web history and analytics review in `tests/e2e/us6-history-analytics.spec.ts` [Trace: US6 Independent Test, SC-009]
 
 ### Implementation for User Story 6
@@ -268,7 +272,8 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 - [ ] T112 [US6] Implement workout analytics service for frequency, completed count, monthly count, last-trained dates, exercise progression, and primary-muscle weekly set counts in `packages/analytics/src/workout-analytics-service.ts` [Trace: FR-061-FR-066d, Data Model Derived Query Services]
 - [ ] T113 [US6] Implement history question service for bounded factual answers grounded in persisted data and safe limitation responses for unsupported questions in `packages/analytics/src/history-question-service.ts` [Trace: FR-058-FR-060d, Data Model HistoryQuestionService]
 - [ ] T114 [US6] Implement analytics API routes in `apps/web/app/api/analytics/overview/route.ts`, `apps/web/app/api/analytics/muscles/route.ts`, `apps/web/app/api/analytics/exercises/[exerciseId]/route.ts`, and `apps/web/app/api/history/questions/supported/route.ts` [Trace: Contract Analytics And History, FR-061-FR-066d]
-- [ ] T115 [US6] Build history and analytics web screens in `apps/web/app/(product)/history/page.tsx`, `apps/web/app/(product)/history/[workoutId]/page.tsx`, `apps/web/app/(product)/analytics/page.tsx`, and `apps/web/components/analytics/*.tsx` [Trace: FR-053-FR-061]
+- [ ] T115 [US6] Build history list/detail page shells and API integration states in `apps/web/app/(product)/history/page.tsx` and `apps/web/app/(product)/history/[workoutId]/page.tsx` [Trace: FR-053-FR-055]
+- [ ] T115A [US6] Build analytics page shell and analytics components for overview, muscles, exercise progression, empty states, and ownership/error states in `apps/web/app/(product)/analytics/page.tsx` and `apps/web/components/analytics/*.tsx` [Trace: FR-061-FR-066d]
 - [ ] T116 [US6] Wire `QUERY_HISTORY` and `QUERY_ANALYTICS` actions into inbound processing with clarification for ambiguous references and no autonomous coaching decisions in `packages/domain/src/messaging/inbound-message-processor.ts` [Trace: FR-058-FR-060d, FR-077]
 
 **Checkpoint**: History, analytics, bounded questions, and coaching boundary are deterministic and reviewable.
@@ -284,7 +289,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 ### Tests for User Story 7
 
 - [ ] T117 [P] [US7] Add data export tests for user-owned portable workout data, ownership isolation, and understandable shape in `packages/domain/src/data-controls/export-service.test.ts` [Trace: FR-073-FR-075, Contract Export And Deletion]
-- [ ] T118 [P] [US7] Add deletion confirmation tests for account deletion, workout-data deletion, idempotent repeated confirmation, and audit summary in `packages/domain/src/data-controls/deletion-service.test.ts` [Trace: FR-076, Data Model DataControlRequest, permanent/destructive mutation tests]
+- [ ] T118 [P] [US7] Add deletion confirmation and ownership-isolation tests for account deletion, workout-data deletion, user A cannot request deletion of user B data, user A cannot confirm user B deletion request, request ids cannot bypass ownership checks, deleted-user command blocking, idempotent repeated valid confirmation, and audit summary in `packages/domain/src/data-controls/deletion-service.test.ts` [Trace: FR-076, Data Model DataControlRequest, permanent/destructive mutation tests]
 - [ ] T119 [P] [US7] Add Playwright test for stored-data review, export request, delete request, and confirmation flow in `tests/e2e/us7-data-controls.spec.ts` [Trace: US7 Independent Test]
 
 ### Implementation for User Story 7
@@ -303,7 +308,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 **Purpose**: Validate the whole product against quickstart scenarios, security boundaries, observability, retry lifecycle, AI eval gates, and constitution controls before review.
 
 - [ ] T124 [P] Add full WhatsApp workout E2E test from account creation through analytics and PR review in `tests/e2e/core-validation-scenario.spec.ts` [Trace: Quickstart Core Validation Scenario, SC-001]
-- [ ] T125 [P] Add messaging lifecycle integration tests for webhook replay, in-flight duplicate, retryable failure, command-already-applied, outbound-already-sent, crash after command commit before outbound send, duplicate webhook afterward, and concurrent same-user message in `tests/integration/messaging/idempotency-retry.test.ts` [Trace: T058, Messaging Deduplication, CHK029-CHK031]
+- [ ] T125 [P] Add broader end-to-end messaging replay hardening tests across webhook replay, duplicate webhook after outbound send, provider retry policy boundaries, linked identity routing, and full workout mutation recovery paths in `tests/integration/messaging/idempotency-retry.test.ts` [Trace: T058A, Messaging Deduplication, CHK029-CHK031]
 - [ ] T126 [P] Add security tests for authorization boundaries, deleted-user command blocking, raw chat logging minimization, secret absence from logs, and scoped rate limiting in `tests/integration/security/privacy-security.test.ts` [Trace: T024, T025, Constitution XII, Plan Security, FR-005, FR-073-FR-076]
 - [ ] T127 [P] Add no-scope-creep executable eval fixtures that reject autonomous programming, progression, deload, nutrition, medical, social, wearable, and trainer-marketplace requests in `packages/evals/fixtures/intent/out-of-scope.yaml` [Trace: T078, T087, FR-077, Constitution XIV]
 - [ ] T128 Run and document validation results for the selected package-manager commands equivalent to `lint`, `typecheck`, `test`, `test:integration`, `test:e2e`, and mandatory offline `eval` in `specs/001-whatsapp-workout-companion/validation-results.md` [Trace: Quickstart Expected Commands, Constitution X and XVIII]
@@ -319,7 +324,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 - **Phase 2 Foundational**: Depends on Phase 1; blocks every user story and provides real auth, owner authorization, idempotency, confirmation handling, rate limiting, and observability.
 - **US1**: Depends on Phase 2; establishes account, profile, routine, and WhatsApp token management only.
 - **US2**: Depends on US1 account, link-token, routine, and exercise identity foundations; provides true inbound token consumption and provider identity linking before WhatsApp workout flows are called linked end-to-end.
-- **US3**: Depends on US2 active workout creation, linked identity, and messaging processor lifecycle.
+- **US3**: Depends on US2 active workout creation, linked identity, messaging processor lifecycle, and T058A core idempotency integration passing.
 - **Minimal Finish/History Vertical Slice**: Depends on US3 deterministic set history; validates finish and read-history without previous-performance, PR, analytics, or AI.
 - **AI And Eval Infrastructure**: Depends on the minimal deterministic vertical slice; must complete before US4 AI-dependent conversational corrections/session mutations, US5 AI fixture execution, US6 bounded question interpretation, or any AI regression claim.
 - **US4**: Depends on AI/eval infrastructure plus US3 recorded sets and active workout context.
@@ -343,12 +348,12 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 1. Complete Phase 1 and Phase 2.
 2. Complete US1 tasks T030-T046.
-3. Complete US2 tasks T047-T060.
+3. Complete US2 tasks T047-T060, including T058A before US3 begins.
 4. Complete US3 tasks T061-T071.
 5. Complete minimal finish/history tasks T072-T077.
 6. Validate with T073.
 
-This proves only: create authenticated user -> create routine -> link or simulate linked messaging identity as appropriate -> start workout -> log deterministic sets -> finish workout -> persist/read history.
+This proves only: create authenticated user -> create routine -> create short-lived WhatsApp link token -> consume it through the normalized inbound provider-scoped identity path -> start workout from the linked identity -> log deterministic sets -> finish workout -> persist/read history.
 
 ---
 
@@ -357,10 +362,10 @@ This proves only: create authenticated user -> create routine -> link or simulat
 - Phase 1 setup tasks T006-T008 can run after T001-T005 in parallel.
 - Phase 2 schema, contract, messaging interface, and tests T012-T014 and T026-T027 can run in parallel after T011.
 - US1 tests T030-T033 can be authored in parallel; exercise identity T040-T042 can run in parallel with routine service T043 after persistence schema exists.
-- US2 link, routine sequence, workout state, and webhook security tests T047-T050 can run in parallel; adapters T055-T056 can run in parallel with domain start commands T051-T054.
-- US3 parser, idempotency, and active-context tests T061-T063 can run in parallel; load semantics T065 can run in parallel with parser T064 after schemas exist.
+- US2 link, routine sequence, workout state, and webhook security tests T047-T050 can run in parallel; adapters T055-T056 can run in parallel with domain start commands T051-T054, while T058A runs only after T058 exists and before US3.
+- US3 parser, load-comparison, and active-context tests T061-T063 can run in parallel after T058A passes; load semantics T065 can run in parallel with parser T064 after schemas exist.
 - Minimal finish/history tests T072-T073 can run in parallel after US3 behavior exists.
-- AI/eval infrastructure T078-T084 can run in parallel where they touch evals, prompts, provider adapter, and mock client separately; T085-T089 depend on those foundations.
+- AI/eval infrastructure T080-T084 can run in parallel where they touch prompts, provider adapter, and mock client separately; T079 depends on T078, and T085-T089 depend on those foundations.
 - US4 correction, destructive-policy, session-mutation, and eval tests T090-T093 can run in parallel.
 - US5 previous-performance, PR, and eval tests T102-T104 can run in parallel.
 - US6 analytics, history-question, eval, and Playwright tests T108-T111 can run in parallel.
