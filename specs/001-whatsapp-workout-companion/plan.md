@@ -16,7 +16,7 @@ The architecture centers on deterministic domain commands. WhatsApp and web inpu
 
 **Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Prisma or Drizzle for typed relational access, Zod for contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, OpenAI Responses API or equivalent provider behind an AI adapter with strict structured output support, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
 
-**Storage**: PostgreSQL. Relational constraints are required for user ownership, one active workout per user, historical session snapshots, idempotency records, corrections, aliases, PRs, analytics queries, exports, and deletion requests.
+**Storage**: PostgreSQL. Relational constraints are required for user ownership, one active workout per user, historical session snapshots, routine sequence cursors, idempotency records, corrections, aliases, analytics queries, exports, and deletion requests. MVP PRs are derived from valid set records rather than stored in a cache/table.
 
 **Testing**: Vitest for domain, parser, analytics, and contract tests; integration tests against PostgreSQL; Playwright for web critical flows; webhook integration tests with signed fixture payloads; AI contract and eval regression tests using frozen cases and provider-mocked structured outputs by default.
 
@@ -64,8 +64,8 @@ The architecture centers on deterministic domain commands. WhatsApp and web inpu
 ```text
 incoming message
 -> messaging adapter verifies provider authenticity and extracts provider message id
--> idempotency guard records or rejects duplicate delivery
--> user/link lookup and authorization
+-> idempotency guard records, resumes, or returns prior duplicate-delivery result based on processing state
+-> provider account plus provider-scoped end-user identity lookup and authorization
 -> context retrieval for active workout, routine sequence, aliases, recent sets, and bounded history scope
 -> deterministic fast-path parser for safe inputs such as 45x10, 45 kg x 10, same x 9, and comma-separated sets
 -> AI interpretation only when deterministic parsing cannot safely resolve intent
@@ -79,7 +79,7 @@ incoming message
 -> outbound messaging adapter
 ```
 
-AI output is advisory. The command layer treats it the same way it treats web/API input: untrusted until schema, authorization, idempotency, confirmation, and domain invariants pass.
+AI output is advisory. The command layer treats it the same way it treats web/API input: untrusted until schema, authorization, idempotency, confirmation, and domain invariants pass. AI confidence cannot bypass authorization, domain validation, required clarification, permanent-change confirmation, or destructive-action confirmation.
 
 ### Boundary Model
 
@@ -109,7 +109,7 @@ Use AI interpretation for ambiguity:
 - Permanent versus session-only intent when language is not rule-clear.
 - Bounded history questions and unsupported coaching-question detection.
 
-The AI interpreter returns a discriminated proposed action. It cannot return executable code, SQL, provider operations, or direct persistence instructions.
+The AI interpreter returns a discriminated proposed action. It cannot return executable code, SQL, provider operations, or direct persistence instructions. Action schemas should be as specific as the action permits: `LOG_SET` and `LOG_MULTIPLE_SETS` require fields such as `reps` at the structured schema level when those fields are required to apply the action, while correction actions may keep partial replacement payloads because the target record supplies existing state.
 
 ### Structured AI Action Contract
 
@@ -136,6 +136,8 @@ Planned action families are documented in [contracts/ai-actions.md](./contracts/
 
 These names are planning-level contract names and may be refined before implementation if the final schema remains traceable to the same behavior.
 
+`UPDATE_ROUTINE_REQUEST` uses a structurally typed routine-change union rather than free-form change text. MVP supported operations include add, remove, replace, and reorder; unsupported permanent routine edits must become clarification or `UNKNOWN`. Query/history actions use typed subjects such as exercise, muscle, workout, session, or routine so resolution is deterministic instead of relying on a generic string reference.
+
 ### Workout State Machine
 
 Explicit session statuses:
@@ -149,19 +151,21 @@ Explicit session statuses:
 - `DISCARDED`: abandoned and excluded from completed history and sequence advancement.
 - `CANCELLED_REPLACED`: active workout explicitly replaced by another session.
 
-Exercise context is a field on the active session, not inferred from planned set counts. Set logging never advances exercise context automatically. Transitions require explicit user intent.
+Exercise context is a field on the active session, not inferred from planned set counts. `WorkoutSession.activeSessionExerciseId` represents the current conversational exercise context. A user may leave one exercise, work on another, and return later; session exercises therefore need an `IN_PROGRESS`-style lifecycle state distinct from the active context pointer. Set logging never advances exercise context automatically and does not force the prior exercise to `COMPLETED`. Transitions require explicit user intent.
 
 Enforcement:
 
 - Partial unique database index allows at most one `PROPOSED`, `ACTIVE`, or `PAUSED` workout per user.
 - `START_WORKOUT` when an active workout exists returns choices: resume, finish, save incomplete, discard, or replace.
-- Completion affects routine sequence only when status is `COMPLETED`, not when skipped/rested/discarded.
+- Completion affects routine sequence only when status is `COMPLETED` and the session's progression policy advances the normal sequence, not when skipped/rested/discarded or completed off-sequence without explicit cursor change.
 
 ### Routine Sequencing
 
-Routine session templates have a stable sequence order plus schedule/frequency metadata. The next proposed workout is selected from the routine sequence by examining completed workout history for that routine and finding the next sequence item after the latest completed session. Missed calendar days do not skip items.
+Routine session templates have a stable sequence order plus schedule/frequency metadata. The next proposed workout is selected from explicit routine sequence progress, such as a `RoutineSequenceCursor`, not solely from the most recently completed session. Missed calendar days do not skip items.
 
 Schedule/frequency metadata is still useful for display, reminders, expected weekly cadence, and ambiguity resolution, but it does not advance the sequence by itself. If multiple routines or sessions are plausible, the product asks the user to choose.
+
+Choosing a different workout for the current session is allowed without permanently changing the normal rotation. Off-sequence sessions must snapshot their planned details and can complete without advancing the routine cursor. The cursor advances only when the user completes the expected normal session or explicitly asks to change the normal routine sequence/cursor.
 
 ### Data And Persistence
 
@@ -178,11 +182,13 @@ All analytics are deterministic services over persisted structured data:
 - Weekly primary-muscle set counts.
 - Exercise progression.
 - Previous-performance lookup.
-- PR detection and recalculation.
+- PR detection from current valid set records.
 - Last-trained dates by muscle/session/exercise.
 - Monthly workout counts.
 
 MVP muscle analytics count primary-muscle sets only. Secondary muscles do not contribute. Unclassified or uncertain custom exercises are excluded until classification is confirmed. Users may correct custom exercise classification.
+
+MVP PRs are derived by `PersonalRecordService` on demand from current valid `WorkoutSet` records. Do not maintain a `PersonalRecord` cache/table initially unless a later approved requirement or measured performance need justifies materialization. Historical corrections and soft deletes naturally affect the derived result.
 
 PR rules:
 
@@ -190,7 +196,7 @@ PR rules:
 - Compatible units and load semantics.
 - Highest recorded load.
 - Highest reps at the same load.
-- Historical corrections trigger deterministic recalculation.
+- Historical corrections affect deterministic derivation because `WorkoutSet` remains the current source of truth.
 - No estimated 1RM or advanced scoring in MVP.
 
 ### Correction And Confirmation Safety
@@ -204,23 +210,38 @@ Deterministic rules:
 - Web completed-history editing still validates ownership and recalculates derived records.
 - Destructive deletion of older sets, exercises, workouts, history blocks, account data, or export/delete request cancellation requires explicit confirmation.
 - Permanent routine modifications through WhatsApp require explicit confirmation.
-- Model confidence alone never authorizes destructive or permanent changes.
+- Model confidence alone never authorizes destructive or permanent changes, and cannot bypass authorization, domain validation, clarification, permanent-change confirmation, or destructive-action confirmation.
+
+Set correction persistence:
+
+- `WorkoutSet` is the current durable source of truth.
+- `Correction` records before/after state and audit metadata.
+- Corrected sets are updated in place after validation; immutable set-version chains, `correctedFromSetId`, and `CORRECTED` set status are not part of the MVP model.
+- Deleted set records may remain soft-deleted and auditable, but analytics, PRs, and normal history answers exclude them.
 
 ### Concurrency And Idempotency
 
-- Persist inbound provider, provider account, provider message id, normalized message fingerprint, processing status, and linked user id.
-- Unique index on provider message id prevents duplicate webhook processing.
+- Persist inbound provider account, provider-scoped end-user identity, provider message id, normalized message fingerprint, processing status, linked user id, command execution id, and outbound response correlation.
+- Unique index on `(provider account, provider message id)` prevents duplicate webhook records without assuming provider account identity equals product user identity.
 - Command-specific idempotency keys prevent duplicate set creation when a webhook is retried after partial processing.
 - Per-user active-workout mutations run in a transaction and acquire a row-level lock on the active workout or user workout-state row.
 - Confirmation tokens are single-use and expire.
 - Repeated confirmations return the existing result rather than applying the command twice.
 - Stale active-workout versions fail with a refresh/clarification response.
+- Duplicate webhook handling is stateful:
+  - Completed prior processing returns the stored command result and, if already sent, the recorded outbound response metadata.
+  - Processing/in-flight delivery returns a safe in-progress/no-op response or lets the provider retry without applying a command.
+  - Retryable failure resumes from the durable inbound and command idempotency records.
+  - Command already applied never applies again, even if outbound sending failed.
+  - Outbound response already sent is not sent again unless the messaging adapter marks a retry as safe and necessary.
+
+Do not add a queue for MVP unless implementation evidence shows synchronous processing cannot meet correctness or reliability requirements.
 
 ### Security
 
 - Authenticated web users via secure session auth.
 - Every user-owned resource is authorized by owner id.
-- WhatsApp linking uses a short-lived link code or signed token initiated from the authenticated web account; inbound WhatsApp identity is not trusted until verified and linked.
+- WhatsApp linking uses a short-lived link code or signed token initiated from the authenticated web account; inbound provider-scoped end-user WhatsApp identity is not trusted until verified and linked.
 - Webhook GET verification and POST signature verification happen at the messaging boundary.
 - Secrets are environment variables only and are never committed.
 - Logs avoid raw chat content by default and record message ids, action ids, statuses, and safe error categories.
@@ -237,7 +258,7 @@ Use the official WhatsApp Business Platform / Cloud API directly for MVP unless 
 - `MessagingIdentity`
 - `MessagingPolicy`
 
-Inbound webhook handling verifies authenticity, deduplicates provider message ids, maps WhatsApp identity to user, and passes normalized messages to the application layer. Outbound sending handles Meta API payload shape, service-window/template constraints, provider errors, and retries at the messaging boundary only. WhatsApp policy logic does not enter workout domain code.
+Inbound webhook handling verifies authenticity, identifies the product-controlled provider account, normalizes the sender `wa_id` into a provider-scoped hashed end-user identity, deduplicates provider message ids within the provider account, maps the linked end-user identity to a product user, and passes normalized messages to the application layer. `(provider, providerAccountId)` identifies a business/provider account that can serve many product users; it must never uniquely identify a product user. Outbound sending handles Meta API payload shape, service-window/template constraints, provider errors, and retries at the messaging boundary only. WhatsApp policy logic does not enter workout domain code.
 
 ### AI Provider
 
@@ -376,15 +397,15 @@ See [research.md](./research.md).
 | Principle | Gate Result | Evidence |
 |-----------|-------------|----------|
 | Specification Before Implementation | PASS | Artifacts plan only the approved feature and create no implementation tasks or source. |
-| AI Justification And Boundaries | PASS | `ai-actions.md` and eval contract keep AI structured, justified, and regression-testable. |
-| Durable State Safety | PASS | `data-model.md` includes command, correction, confirmation, idempotency, and audit concepts. |
+| AI Justification And Boundaries | PASS | `ai-actions.md` and eval contract keep AI structured, justified, confidence-advisory, and regression-testable. |
+| Durable State Safety | PASS | `data-model.md` includes command, correction, confirmation, retry-aware idempotency, routine cursor, active exercise context, and audit concepts. |
 | Never Invent Workout Data | PASS | Contracts require clarification/unknown actions when fields are missing or unsafe. |
 | User Control | PASS | Confirmation and correction rules are represented in domain, contracts, and quickstart scenarios. |
 | Unknown Exercise Support | PASS | Stable exercise identity, alias, classification, and merge confirmation are first-class data concepts. |
-| Deterministic Analytics | PASS | Analytics are modeled as services and query outputs derived from persisted records. |
-| Privacy And Security | PASS | Link ownership, webhook verification, authorization, logging limits, and prompt injection protections are planned. |
-| Provider Independence | PASS | WhatsApp and AI are adapters; domain contracts are provider-independent. |
-| Scope Discipline And Simplicity | PASS | Single app monorepo, no MVP queue, no autonomous coaching or advanced PR scoring. |
+| Deterministic Analytics | PASS | Analytics and MVP PRs are modeled as services derived from current valid persisted records. |
+| Privacy And Security | PASS | Provider-scoped WhatsApp user identity, link ownership, webhook verification, authorization, logging limits, and prompt injection protections are planned. |
+| Provider Independence | PASS | WhatsApp provider accounts and provider user identities sit behind messaging/link tables; domain contracts remain provider-independent. |
+| Scope Discipline And Simplicity | PASS | Single app monorepo, no MVP queue, no PR cache/table, no set-version chains, no autonomous coaching or advanced PR scoring. |
 
 No constitution violations are known.
 

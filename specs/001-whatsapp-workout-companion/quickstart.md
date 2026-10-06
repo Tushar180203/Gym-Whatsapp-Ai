@@ -34,7 +34,7 @@ End-to-end happy path:
 4. Add known and custom exercises with planned sets and rep targets.
 5. Connect WhatsApp through a short-lived link token.
 6. Send `start` from the linked WhatsApp identity.
-7. Confirm the proposed next workout from sequence history.
+7. Confirm the proposed next workout from the user's explicit routine sequence progress/cursor.
 8. Log `45x10`, `45x9`, and `same x 8` against the active exercise.
 9. Correct one set with `that was 44 not 45`.
 10. Send `bench is busy let's do shoulder press first`.
@@ -49,6 +49,7 @@ Expected outcome:
 - Set history preserves exercise identity, order, load, unit, load semantics, reps, and correction state.
 - Set logging does not auto-advance active exercise.
 - Session-only changes do not edit the routine.
+- Completed off-sequence workouts do not implicitly redefine the routine sequence cursor unless the workout was intended to advance normal sequence progress.
 - Completed session appears in history and analytics.
 - PR and previous-performance values are deterministic.
 

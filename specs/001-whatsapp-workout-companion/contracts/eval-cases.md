@@ -25,6 +25,8 @@ expectedAction:
 expectedFields:
   set.loadValue: 45
   set.reps: 10
+expectedClarification: null
+expectedConfirmationRequired: false
 forbiddenOutcomes:
   - createsCustomExercise
   - changesActiveExercise
@@ -35,19 +37,43 @@ forbiddenOutcomes:
 
 - Intent detection.
 - Simple set logging.
-- Multi-set logging.
-- `same` resolution.
-- Corrections.
-- Ambiguous corrections.
-- Custom exercises.
-- Aliases.
-- Session-only versus permanent changes.
-- Unknown exercises.
-- History questions.
-- Unsupported coaching questions.
-- Unit and load semantics.
-- Destructive actions.
+- Multiple set logging.
+- Omitted preferred unit.
+- Explicit `kg` or `lb` unit.
+- Per-hand/per-side load.
+- Machine-stack load.
+- `same` with valid current-exercise context.
+- Ambiguous or invalid `same`.
+- Immediate correction.
+- Correction after moving exercises.
+- Ambiguous correction.
+- Delete last set.
+- Destructive deletion requiring confirmation.
+- Confirmed exercise alias.
+- Alias conflict.
+- First-time custom exercise.
+- Similar exercise identities that must remain separate.
+- Session-only workout change.
+- Clearly permanent routine change.
+- Ambiguous session-versus-permanent change.
+- Exact previous-performance lookup.
+- No exact prior history.
+- Bounded history question.
+- Bounded analytics question.
+- Unsupported coaching request.
+- Missing numeric workout data.
 - Hallucination prevention.
+- Unknown or unsupported intent.
+
+Each case should define, where relevant:
+
+- Conversation context.
+- User input.
+- Expected structured action.
+- Expected extracted fields.
+- Expected clarification.
+- Expected confirmation requirement.
+- Forbidden outcomes.
 
 ## Pass Criteria
 

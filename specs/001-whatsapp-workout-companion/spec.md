@@ -12,7 +12,7 @@
 
 ### Session 2026-10-06
 
-- Q: When a user sends "start" in WhatsApp, how should the product choose the proposed workout if the routine has a schedule and the user missed or shifted prior sessions? → A: Rotating next-workout sequence based on completed workout history; missed calendar days do not advance or skip the sequence, schedules remain intended frequency/planned days only, and ambiguous starts require user choice.
+- Q: When a user sends "start" in WhatsApp, how should the product choose the proposed workout if the routine has a schedule and the user missed, shifted, or explicitly chose a different prior session? → A: Use explicit routine sequence progress for the normal rotating sequence; missed calendar days and off-sequence session choices do not advance or skip the normal sequence unless the user explicitly requests that change, schedules remain intended frequency/planned days only, and ambiguous starts require user choice.
 - Q: What should happen if a user sends "start" while another workout session is already active? → A: MVP allows only one active workout per user; the product shows the active workout and requires explicit choice to resume, finish, save incomplete, discard, or replace it.
 - Q: For MVP set logging, how should the active exercise advance after the user logs sets? → A: Keep the current exercise active until the user explicitly changes exercise context; planned sets are targets and extra sets remain on the current exercise.
 - Q: For MVP, how should the product record weights when the user omits units or says "each" for dumbbell-style work? → A: Persist unit and load semantics per weighted set; use preferred units only when safe, preserve per-hand/per-side, total, and machine-stack semantics, and compare only matching or explicitly normalized values.
@@ -53,7 +53,7 @@ A linked user starts a workout from WhatsApp using natural language, sees the pl
 
 **Acceptance Scenarios**:
 
-1. **Given** a linked user has exactly one safe next planned workout in the routine sequence based on completed workout history, **When** they send "gym time", **Then** the product shows the planned exercises and offers to start that workout.
+1. **Given** a linked user has exactly one safe next planned workout in the normal routine sequence based on explicit sequence progress, **When** they send "gym time", **Then** the product shows the planned exercises and offers to start that workout.
 2. **Given** multiple workouts are plausible for the current context, **When** the user sends "start", **Then** the product asks the user to choose instead of guessing.
 3. **Given** the user chooses to rest or skip today, **When** they confirm that choice, **Then** no workout session is started and no workout is recorded as completed.
 4. **Given** the user makes a temporary change before starting, **When** they confirm the workout, **Then** the change applies only to the current session unless the user explicitly asks to update the permanent plan.
@@ -222,7 +222,7 @@ The user can understand what workout data is stored, correct it, export it, and 
 - **FR-018g**: Renaming an exercise MUST preserve the same exercise identity, and adding an alias MUST create another phrase for the same identity; neither action creates a new progression history unless the user explicitly creates a new exercise.
 - **FR-018h**: Confirmed exercise identity MUST be used consistently for workout history, PR detection, previous-performance context, analytics, and future alias resolution.
 - **FR-019**: A linked user MUST be able to start a workout from WhatsApp using natural language such as "start", "let's start", "gym time", or "start workout".
-- **FR-020**: For MVP, when a linked user sends a start intent without naming a workout, the product MUST propose the next planned workout in the routine sequence based on completed workout history rather than strictly using the calendar day.
+- **FR-020**: For MVP, when a linked user sends a start intent without naming a workout, the product MUST propose the next planned workout from explicit routine sequence progress rather than deriving it solely from the latest completed workout or strictly using the calendar day.
 - **FR-021**: The product MUST ask for clarification when the correct workout cannot be determined safely.
 - **FR-022**: Before or when starting a workout, the product MUST show the planned exercises for the proposed session.
 - **FR-023**: Before or when starting a workout, users MUST be able to start the planned workout, make a temporary change, choose another appropriate workout, or skip/rest.

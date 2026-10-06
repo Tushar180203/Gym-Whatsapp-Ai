@@ -95,5 +95,6 @@ Rules:
 Rules:
 
 - POST requires provider signature verification.
-- Provider message ids are deduplicated.
+- Provider message ids are deduplicated within the provider account.
+- Linked-user lookup uses `(provider, providerAccountId, providerUserIdentityHash)`; `providerAccountId` alone is not an end-user identity.
 - Provider-specific details stay outside workout domain logic.
