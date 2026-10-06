@@ -32,6 +32,23 @@
 - Raw SQL only: rejected for MVP because shared typed access reduces accidental schema drift.
 - Full repository abstraction everywhere: rejected as a default. Use focused repositories/query services where they protect domain boundaries.
 
+### Implementation Decision: npm Workspaces And Drizzle
+
+**Decision**: Use npm workspaces for the monorepo and Drizzle for typed PostgreSQL access.
+
+**Rationale**: npm is already available in the target Node environment and keeps the first vertical slice lightweight. Drizzle fits the SQL-first persistence model, partial unique index needs, migration reviewability, and TypeScript ergonomics without requiring a generated client during early slice work.
+
+**Vertical-slice note**: The first deterministic slice includes a reviewed SQL migration and an in-memory repository implementation for automated tests in this environment. The repository boundary is intentionally shaped around the PostgreSQL/Drizzle schema so the slice can run without a live database while preserving the approved relational constraints for production wiring.
+
+## Decision: Use First-Party Secure Session Auth For The Vertical Slice
+
+**Rationale**: The first deterministic slice needs real authenticated user context, secure session tokens, logout/session invalidation, and ownership checks before provider identity linking can be trusted. A first-party session service using high-entropy bearer tokens, hashed session storage, password hashing, expiry, invalidation, and owner guards satisfies the slice without coupling the domain to a hosted auth provider.
+
+**Alternatives considered**:
+
+- Mock auth: rejected because the vertical slice must prove real ownership and cross-user isolation.
+- External hosted auth provider: deferred until deployment/provider requirements are finalized; the session boundary can later be backed by a provider without changing domain ownership rules.
+
 ## Decision: Use Official WhatsApp Business Platform / Cloud API Behind A Messaging Interface
 
 **Rationale**: Direct Cloud API integration avoids unnecessary aggregator coupling for MVP and supports official webhook and outbound-message flows. The messaging adapter owns provider verification, provider payload formats, outbound message constraints, service-window/template behavior, and provider errors. Domain code sees normalized messages and outbound response intents only.

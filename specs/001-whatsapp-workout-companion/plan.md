@@ -14,7 +14,7 @@ The architecture centers on deterministic domain commands. WhatsApp and web inpu
 
 **Language/Version**: TypeScript 5.x on Node.js LTS 22.x. Strict TypeScript across apps and packages.
 
-**Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Prisma or Drizzle for typed relational access, Zod for contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, OpenAI Responses API or equivalent provider behind an AI adapter with strict structured output support, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
+**Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Drizzle for typed relational access, Zod-style local contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, OpenAI Responses API or equivalent provider behind an AI adapter with strict structured output support, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
 
 **Storage**: PostgreSQL. Relational constraints are required for user ownership, one active workout per user, historical session snapshots, routine sequence cursors, idempotency records, corrections, aliases, analytics queries, exports, and deletion requests. MVP PRs are derived from valid set records rather than stored in a cache/table.
 
@@ -412,7 +412,7 @@ No constitution violations are known.
 ## Unresolved Technical Decisions
 
 - Exact TypeScript package manager and workspace tool: pnpm is recommended, but no package manager exists in the repo yet.
-- Prisma versus Drizzle: both fit; choose during implementation based on team preference for migration ergonomics and query complexity.
+- Typed relational access: Drizzle selected during the first deterministic vertical-slice implementation for SQL-first migrations, partial-index ergonomics, and lightweight TypeScript integration.
 - Web authentication provider: must support secure sessions and account linking; exact library/provider remains open.
 - Production hosting provider and secret manager remain open.
 - AI provider/model and fallback policy remain open until cost, latency, and eval performance are measured.
