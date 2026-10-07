@@ -13,6 +13,7 @@ import { isResumeIntent } from "../../domain/src/workouts/resume-workout-command
 import { WorkoutHistoryQueries } from "./workout-history-queries.js";
 import { WorkoutLifecycle } from "./workout-lifecycle.js";
 import { AnalyticsQueries } from "./analytics-queries.js";
+import { DataControls, exportRequestSchema, deleteRequestSchema, confirmDeletionSchema } from "./data-controls.js";
 import { workoutAnalytics } from "../../analytics/src/workout-analytics-service.js";
 import { answerHistoryQuestion, coachingBoundary, type HistoryAction, type HistorySnapshot } from "../../analytics/src/history-question-service.js";
 import { ProposedActionSchema } from "../../contracts/src/ai/actions.js";
@@ -60,7 +61,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -181,6 +182,11 @@ export class PostgresVerticalSliceApp {
       const inbound = await this.upsertInbound(client, message);
       if (inbound.processing_status === "COMPLETED") {
         if (inbound.user_id) {
+          await client.query("select pg_advisory_xact_lock(hashtext($1))", [inbound.user_id]);
+          const user = (await client.query("select deleted_at,data_control_generation from users where id=$1", [inbound.user_id])).rows[0];
+          if (!user || user.deleted_at) throw new DomainError("User unavailable", "UNAUTHORIZED");
+          const generation = (await client.query("select data_control_generation from inbound_messages where id=$1", [inbound.id])).rows[0].data_control_generation;
+          if (generation !== user.data_control_generation) { await client.query("commit"); return { reused: true, body: "Previous workout data is no longer available." }; }
           const outbound = await client.query(`select id from outbound_messages where inbound_message_id = $1`, [
             inbound.id
           ]);
@@ -199,8 +205,8 @@ export class PostgresVerticalSliceApp {
       await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [userId]);
       if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("User unavailable", "UNAUTHORIZED");
       const body = await this.applyMessage(client, userId, inbound.id, message.text);
-      await client.query(`update inbound_messages set processing_status = 'COMPLETED', processed_at = now(), result_body=$2 where id = $1`, [
-        inbound.id, body
+      await client.query(`update inbound_messages set processing_status = 'COMPLETED', processed_at = now(), result_body=$2,data_control_generation=(select data_control_generation from users where id=$3) where id = $1`, [
+        inbound.id, body, userId
       ]);
       if (!options.crashAfterCommandBeforeOutbound) {
         await this.persistOutbound(client, userId, inbound.id, message, body);
@@ -333,6 +339,35 @@ export class PostgresVerticalSliceApp {
     return new WorkoutHistoryQueries(this.pool).records(userId, exerciseRef, weightUnit, loadSemantics);
   }
 
+  private async dataTransaction<T>(sessionToken: string, handler: (controls: DataControls) => Promise<T>, completedAccountRequestId?: string): Promise<T> {
+    const client = await this.pool.connect(), sessionHash = sha256(sessionToken);
+    try {
+      await client.query("begin");
+      const session = (await client.query("select user_id from auth_sessions where token_hash=$1 and expires_at>clock_timestamp()", [sessionHash])).rows[0];
+      if (!session) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [session.user_id]);
+      const active = (await client.query("select u.id from users u join auth_sessions s on s.user_id=u.id where u.id=$1 and u.deleted_at is null and s.token_hash=$2 and s.invalidated_at is null and s.expires_at>clock_timestamp()", [session.user_id, sessionHash])).rows[0];
+      if (!active) {
+        // A former session is only a receipt for its already-completed account deletion.
+        const receipt = completedAccountRequestId && (await client.query("select r.id from data_control_requests r join users u on u.id=r.user_id where r.id=$1 and r.user_id=$2 and r.creator_session_hash=$3 and r.type='DELETE_ACCOUNT' and r.status='COMPLETED' and u.deleted_at is not null", [completedAccountRequestId, session.user_id, sessionHash])).rows[0];
+        if (!receipt) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      }
+      const result = await handler(new DataControls(client, session.user_id, sessionHash));
+      await client.query("commit"); return result;
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
+  }
+  async dataReview(sessionToken: string) { return this.dataTransaction(sessionToken, controls => controls.review()); }
+  async requestExport(sessionToken: string, input: unknown) {
+    const value = exportRequestSchema.parse(input); return this.dataTransaction(sessionToken, controls => controls.request("EXPORT", value.idempotencyKey));
+  }
+  async exportResult(sessionToken: string, requestId: string) { return this.dataTransaction(sessionToken, controls => controls.exportResult(requestId)); }
+  async requestDeletion(sessionToken: string, input: unknown) {
+    const value = deleteRequestSchema.parse(input); return this.dataTransaction(sessionToken, controls => controls.request(value.type, value.idempotencyKey));
+  }
+  async confirmDeletion(sessionToken: string, requestId: string, input: unknown) {
+    confirmDeletionSchema.parse(input); return this.dataTransaction(sessionToken, controls => controls.confirm(requestId), requestId);
+  }
+
   async workoutLifecycle(input: { sessionToken: string; workoutId: string; intent: CompletionIntent | "REQUEST" | "RESUME"; idempotencyKey: string }) {
     const userId = await this.currentUser(input.sessionToken);
     const client = await this.pool.connect();
@@ -340,7 +375,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
       if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
-      if (!(await client.query("select id from workout_sessions where id=$1 and user_id=$2", [input.workoutId, userId])).rows.length) throw new DomainError("Workout not found", "NOT_FOUND");
+      if (!(await client.query("select id from workout_sessions where id=$1 and user_id=$2 and data_deleted_at is null", [input.workoutId, userId])).rows.length) throw new DomainError("Workout not found", "NOT_FOUND");
       const lifecycle = new WorkoutLifecycle(client, userId, "WEB");
       const body = input.intent === "RESUME" ? await lifecycle.resume(input.workoutId)
         : await lifecycle.finish(`web:${input.workoutId}:finish:${input.idempotencyKey}`, input.intent, input.workoutId);
@@ -498,6 +533,7 @@ export class PostgresVerticalSliceApp {
   }
 
   private async startWorkout(client: PoolClient, userId: string): Promise<void> {
+    if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("User unavailable", "UNAUTHORIZED");
     const active = await client.query(`select id from workout_sessions where user_id = $1 and status in ('PROPOSED', 'ACTIVE', 'PAUSED')`, [
       userId
     ]);

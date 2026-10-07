@@ -91,6 +91,14 @@ Rules:
 
 - Export and deletion requests are user-owned.
 - Deletion requires confirmation.
+- POST export accepts only `{ idempotencyKey }`. Small-account export is synchronous and atomic: the durable request transitions to `COMPLETED` with `requestedAt`, `completedAt`, a versioned portable JSON result and an authenticated result location. Duplicate owner/key requests reuse the record; foreign owner fields are rejected.
+- GET export returns `{ request, data }` only to its active authenticated owner. `?download=1` downloads `workout-export.v1` as JSON. Internal credentials, provider secrets/identity hashes, raw auth/link tokens, inbound chat payloads and operational command records are excluded. Referenced shared exercise definitions may be included; unrelated users' definitions are not.
+- POST delete-request accepts only `{ idempotencyKey, type }`, where type is `DELETE_ACCOUNT` or `DELETE_WORKOUT_DATA`. Owner comes from the secure session. It creates `AWAITING_CONFIRMATION` with a ten-minute expiry and a fingerprint of the target data. A second pending deletion is rejected; duplicate keys reuse their original result.
+- POST confirm accepts only `{ confirm: true }`. Ownership, active authentication, expiry and target fingerprint are revalidated under the per-user transaction lock. Changed targets become `STALE`; expired requests become `EXPIRED`; neither executes. Completed requests replay without applying deletion again. Request metadata includes owner, type, requested/confirmed/completed times, status and safe operation/count summaries.
+- Workout-data deletion makes recorded sessions/sets/corrections inaccessible, excludes them from history/PRs/previous performance/analytics/questions and revokes prior export snapshots. Routine templates, exercise definitions, classifications and preferences remain. The existing `DISCARDED` session state plus a storage-only deletion marker and deleted set state implement soft deletion; no retention or secure-erasure commitment is added.
+- Account deletion additionally persists `User.deletedAt`, invalidates all auth sessions, revokes links and consumes outstanding link tokens. New commands and replayed webhooks cannot return old workout facts or mutate the deleted account. Shared/global definitions and other users remain intact.
+- Email uniqueness applies to active users as specified by the User model; registering a deleted account's email creates a distinct owner with no inherited history, credentials or request authority.
+- The original unexpired session credential may retrieve only its exact already-completed account-deletion confirmation receipt, despite invalidation. This is a terminal no-write replay, not renewed authentication; it cannot request exports, read workout data, or authorize another request. All execution still requires a live authenticated owner. Data-control routes do not invoke AI.
 
 ## Webhook
 

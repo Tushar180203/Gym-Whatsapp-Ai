@@ -24,7 +24,8 @@
     "build": "next build apps/web --webpack",
     "test:us4:web": "playwright test -c tests/e2e/us4/playwright.config.ts",
     "test:us5:e2e": "playwright test -c tests/e2e/us5/playwright.config.ts",
-    "test:us6:web": "playwright test -c tests/e2e/us6/playwright.config.ts"
+    "test:us6:web": "playwright test -c tests/e2e/us6/playwright.config.ts",
+    "test:us7:web": "playwright test -c tests/e2e/us7/playwright.config.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

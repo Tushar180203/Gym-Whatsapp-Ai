@@ -202,6 +202,12 @@ Expected outcome:
 
 US6 executable validation: `TEST_DATABASE_URL=<disposable-postgres-url> npm run test:postgres` covers restart, current corrected/deleted records, classification changes and ownership. `TEST_DATABASE_URL=<disposable-postgres-url> npm run test:us6:web` covers desktop/mobile history and Overview/Muscles/Exercises views, manual classification, empty/error/auth states. Apply `0004_us6.sql` after `0003_us5.sql` on existing databases first. Periods are explicitly UTC (Monday weeks/calendar months); counts/frequency include completed sessions only, while valid recorded sets in completed/incomplete sessions contribute muscle sets/progression/last-trained. Classifications are user-private confirmed PRIMARY values, never guessed. Supported WhatsApp examples above use deterministic query routing; differently worded queries use validated Gemini intent only. Offline eval fixtures test boundaries, not live-model accuracy.
 
+## US7 Data-Control Validation
+
+Apply `0005_us7.sql` after `0004_us6.sql` on existing databases. With a disposable PostgreSQL database, run `TEST_DATABASE_URL=<url> npm run test:postgres` and `TEST_DATABASE_URL=<url> npm run test:us7:web` under Node 22. The web surface is `/settings/data`; ordinary review/correction continues through `/history`.
+
+Verify portable owner-only JSON categories, no credentials/raw-chat/operational secrets, export status and download; cross-user export/deletion/confirmation rejection; explicit deletion consent; stale/expired no-op; repeated/concurrent confirmation no-op after completion; restart-safe status; active/completed data removal from history/PRs/previous performance/analytics/questions; other users/shared definitions intact; revoked export snapshots and old webhook replay protection; invalidated sessions/links after account deletion. Only the original unexpired session can replay its exact completed account-deletion receipt without renewing access. No AI interpretation is used. Deletion implements soft inaccessibility, not a new retention or physical-erasure commitment.
+
 ## Webhook Security Validation
 
 Scenarios:

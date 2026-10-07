@@ -183,6 +183,14 @@ rejected locally. Sanitized evidence and reproducible commands are in
 
 ## Open Technical Questions
 
+### US7 Implementation Decisions (2026-10-07)
+
+- Use the approved synchronous small-account data-control path: one durable request table with owner/key uniqueness, one pending deletion per user and per-user PostgreSQL transaction locks. No queue, worker, additional agent or new service was needed.
+- Export `workout-export.v1` is a portable JSON snapshot assembled from explicit owner-scoped categories/field allowlists. Include owned custom identities and only referenced shared definitions. Omit credentials, provider identity hashes, raw tokens/chat payloads and operational command records, including secret-bearing keys in nested snapshots.
+- Workout-data deletion covers recorded sessions, session exercises, sets and associated correction/history access; configuration remains available for future workouts. The existing `DISCARDED` lifecycle and deleted set state are retained. A storage-only `data_deleted_at` marker prevents exporting removed records while preserving ordinary discarded-session metadata. Account deletion additionally blocks sessions/links and records the existing user tombstone. This implements inaccessibility/soft deletion, not a physical-purge, backup-removal or retention guarantee. Release privacy/retention commitments remain open.
+- Deletion requires an authenticated owner, explicit confirmation, ten-minute expiry and a target-data fingerprint. Stale targets require a new request. Completed owner requests reuse their safe terminal result; the original unexpired session credential is accepted only for its exact completed account-deletion receipt after invalidation, never for execution or data access.
+- Revoking old export snapshots and advancing a user data-generation marker prevents old provider delivery replays from returning removed workout facts or reapplying them to a new workout. This uses the existing inbound transaction/idempotency lifecycle, not a new event or queue architecture.
+
 ### US6 Implementation Decisions (2026-10-07)
 
 - Analytics remain on-demand deterministic queries, not persisted aggregates. Read-only repeatable-read PostgreSQL snapshots keep each web result internally consistent; inbound queries run inside the existing user-serialized messaging transaction.
