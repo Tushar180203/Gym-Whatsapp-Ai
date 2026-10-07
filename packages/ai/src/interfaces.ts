@@ -13,6 +13,7 @@ export type AiInterpretationContext = {
     reps?: number;
   };
   knownExerciseRefs?: string[];
+  confirmedAliases?: Array<{ alias: string; exerciseRef: string }>;
 };
 
 export type IntentInterpretRequest = {

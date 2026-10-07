@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseSetMessage } from "./set-parser.js";
+import { hasSetNotation, parseSetMessage } from "./set-parser.js";
 
 describe("parseSetMessage", () => {
+  it("never splits a correction's standalone numeric value into invented load/reps", () => {
+    expect(hasSetNotation("completed set 1 was 12")).toBe(false);
+    expect(hasSetNotation("make the last one 10 reps")).toBe(false);
+    expect(hasSetNotation("actually that was 45x9")).toBe(false);
+    expect(hasSetNotation("45x9")).toBe(true);
+  });
   it("parses supported deterministic load notation", () => {
     expect(
       parseSetMessage("45 kg x 10", {

@@ -43,7 +43,7 @@
     "userInput": "red hammer press 40x12",
     "expectedAction": { "type": "CREATE_CUSTOM_EXERCISE" },
     "expectedFields": { "name": "red hammer press" },
-    "expectedConfirmationRequired": false,
+    "expectedConfirmationRequired": true,
     "mockProviderOutput": {
       "schemaVersion": "workout-action.v1",
       "action": { "type": "CREATE_CUSTOM_EXERCISE", "name": "red hammer press" },

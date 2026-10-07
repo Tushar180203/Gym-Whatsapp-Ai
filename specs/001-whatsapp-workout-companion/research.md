@@ -113,6 +113,15 @@ rejected locally. Sanitized evidence and reproducible commands are in
 
 ## Decision: Version Prompts, Schemas, And Eval Cases
 
+### US4 Delivery Decision (2026-10-07)
+
+- Reuse the existing PostgreSQL inbound transaction and per-user advisory lock for corrections, session mutations, pending confirmations and audit writes. No queue, worker, event store or new agent.
+- Migration `0002_us4.sql` adds correction audits, confirmed aliases, expiring pending confirmations, optimistic routine/identity versions, durable response recovery and scope-clarification state. Added exercises have nullable planning targets rather than invented set counts or rep targets.
+- Confirmed exercise-template edits affect future snapshots only. Removed planned exercises remain as flagged rows because existing workout snapshots retain their source references.
+- The previously implemented route files were callable functions rather than HTTP handlers. T101 instantiates the already-approved Next.js/React stack and converts those transport wrappers to Request/Response handlers, with HttpOnly session cookies and same-origin mutation checks. This does not change workout domain behavior or add a new architecture.
+- Prompt `intent-interpreter.prompt.v3` adds US4 target-reference, alias, numeric-data and scope guidance. The action envelope schema remains `workout-action.v1`; local Zod validation and deterministic authorization/confirmation remain authoritative. Twelve US4 fixtures run offline with mocks; this is not evidence of live Gemini language accuracy.
+- This pass supports permanent exercise add/remove/replace/reorder operations. Routine session-template add/remove/replace/reorder and `CHANGE_SESSION` execution are outside the user's enumerated US4 pass and return clarification/unsupported responses, not mutations.
+
 **Rationale**: Intent interpretation, alias handling, and destructive-action safety are core product risks. AI behavior changes must be regression-testable. Versioned prompt/schema/eval artifacts make changes reviewable and traceable.
 
 **Alternatives considered**:

@@ -5,7 +5,9 @@ import type { LoadSemantics, NormalizedWhatsAppMessage, WeightUnit } from "../..
 import { DomainError, sha256 } from "./store.js";
 import { hasSetNotation, parseSetMessage } from "../../domain/src/parser/set-parser.js";
 import type { IntentInterpreter } from "../../ai/src/interfaces.js";
-import { guardProposedAction } from "../../ai/src/action-boundary.js";
+import { Us4Commands } from "./us4.js";
+import { handleDeterministicUs4Message } from "../../domain/src/messaging/inbound-message-processor.js";
+import { SetInputSchema, type SetInput } from "../../contracts/src/ai/actions.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
@@ -22,6 +24,10 @@ export type PgHistoryEntry = {
     setIndex: number;
   }>;
 };
+export type EditableHistory = {
+  workout: { id: string; name: string; status: string; version: number };
+  sets: Array<{ id: string; exerciseName: string; setIndex: number; loadValue: number; weightUnit: WeightUnit; loadSemantics: LoadSemantics; reps: number }>;
+};
 
 export class PostgresVerticalSliceApp {
   readonly pool: Pool;
@@ -36,9 +42,21 @@ export class PostgresVerticalSliceApp {
     await this.pool.end();
   }
 
-  async migrate(migrationPath = "packages/persistence/migrations/0001_vertical_slice.sql"): Promise<void> {
-    const sql = readFileSync(migrationPath, "utf8");
-    await this.pool.query(sql);
+  async migrate(migrationPath?: string): Promise<void> {
+    if (migrationPath) { await this.pool.query(readFileSync(migrationPath, "utf8")); return; }
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock(40104002)");
+      await client.query("create table if not exists schema_migrations(name text primary key)");
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql"]) {
+        if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
+        const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
+        if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
+        await client.query("insert into schema_migrations(name) values($1)", [name]);
+      }
+      await client.query("commit");
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
   }
 
   async signUp(email: string, password: string): Promise<{ userId: string; sessionToken: string }> {
@@ -156,11 +174,11 @@ export class PostgresVerticalSliceApp {
             inbound.id
           ]);
           if (!outbound.rows[0]) {
-            await this.persistOutbound(client, inbound.user_id, inbound.id, message, "Recovered previous result");
+            await this.persistOutbound(client, inbound.user_id, inbound.id, message, inbound.result_body ?? "Recovered previous result");
           }
         }
         await client.query("commit");
-        return { reused: true };
+        return { reused: true, body: inbound.result_body ?? "Recovered previous result" };
       }
       const userId = await this.resolveUser(client, message);
       await client.query(`update inbound_messages set processing_status = 'PROCESSING', user_id = $2 where id = $1`, [
@@ -168,15 +186,16 @@ export class PostgresVerticalSliceApp {
         userId
       ]);
       await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [userId]);
+      if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("User unavailable", "UNAUTHORIZED");
       const body = await this.applyMessage(client, userId, inbound.id, message.text);
-      await client.query(`update inbound_messages set processing_status = 'COMPLETED', processed_at = now() where id = $1`, [
-        inbound.id
+      await client.query(`update inbound_messages set processing_status = 'COMPLETED', processed_at = now(), result_body=$2 where id = $1`, [
+        inbound.id, body
       ]);
       if (!options.crashAfterCommandBeforeOutbound) {
         await this.persistOutbound(client, userId, inbound.id, message, body);
       }
       await client.query("commit");
-      return { reused: false };
+      return { reused: false, body };
     } catch (error) {
       await client.query("rollback");
       throw error;
@@ -200,8 +219,8 @@ export class PostgresVerticalSliceApp {
         set_index: number;
       }>(
         `select load_value, weight_unit, load_semantics, reps, set_index
-         from workout_sets where workout_session_id = $1 order by set_index`,
-        [workout.id]
+         from workout_sets where workout_session_id = $1 and user_id=$2 and status='RECORDED' order by created_at,set_index`,
+        [workout.id, userId]
       );
       entries.push({
         workout,
@@ -215,6 +234,32 @@ export class PostgresVerticalSliceApp {
       });
     }
     return entries;
+  }
+
+  async historyDetails(sessionToken: string, workoutId: string): Promise<EditableHistory> {
+    const userId = await this.currentUser(sessionToken);
+    const workout = (await this.pool.query("select id,name,status,version from workout_sessions where id=$1 and user_id=$2 and status in ('COMPLETED','INCOMPLETE')", [workoutId, userId])).rows[0];
+    if (!workout) throw new DomainError("Workout not found", "NOT_FOUND");
+    const sets = await this.pool.query("select s.id,e.display_name,s.set_index,s.load_value,s.weight_unit,s.load_semantics,s.reps from workout_sets s join exercise_identities e on e.id=s.exercise_identity_id where s.workout_session_id=$1 and s.user_id=$2 and s.status='RECORDED' order by s.created_at,s.set_index", [workoutId, userId]);
+    return { workout, sets: sets.rows.map(row => ({ id: row.id, exerciseName: row.display_name, setIndex: row.set_index, loadValue: Number(row.load_value), weightUnit: row.weight_unit, loadSemantics: row.load_semantics, reps: row.reps })) };
+  }
+
+  async editHistorySet(input: { sessionToken: string; workoutId: string; setId: string; replacement: Partial<SetInput>; idempotencyKey: string; expectedVersion: number }): Promise<string> {
+    const replacement = SetInputSchema.parse(input.replacement) as Partial<SetInput>;
+    const userId = await this.currentUser(input.sessionToken);
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin"); await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+      if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      const target = (await client.query("select w.version from workout_sets s join workout_sessions w on w.id=s.workout_session_id where s.id=$1 and s.workout_session_id=$2 and s.user_id=$3 and w.user_id=$3 and w.status in ('COMPLETED','INCOMPLETE') and s.status='RECORDED'", [input.setId, input.workoutId, userId])).rows[0];
+      if (!target) throw new DomainError("Set not found", "NOT_FOUND");
+      const key = `web:${input.workoutId}:${input.setId}:${input.idempotencyKey}`;
+      const prior = await client.query("select id from command_executions where user_id=$1 and idempotency_key=$2", [userId, key]);
+      if (!prior.rows.length && target.version !== input.expectedVersion) throw new DomainError("Workout changed. Refresh before editing.", "STALE_VERSION");
+      const body = await new Us4Commands(client, userId, null, "WEB").dispatch({ type: "CORRECT_SET", targetRef: input.setId, replacement }, "", key);
+      if (!(await client.query("select id from command_executions where user_id=$1 and idempotency_key=$2 and status='COMPLETED'", [userId, key])).rows.length) throw new DomainError("Invalid correction", "INVALID_INPUT");
+      await client.query("commit"); return body;
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
   }
 
   async activeWorkout(userId: string): Promise<{ id: string; status: string; name: string } | null> {
@@ -246,13 +291,14 @@ export class PostgresVerticalSliceApp {
       id: string;
       processing_status: string;
       user_id: string | null;
+      result_body: string | null;
     }>(
       `insert into inbound_messages
        (id, provider, provider_account_id, provider_message_id, provider_user_identity_hash, text_redacted, raw_payload_hash, processing_status)
        values ($1, $2, $3, $4, $5, $6, $7, 'RECEIVED')
        on conflict (provider_account_id, provider_message_id) do update
        set provider_message_id = excluded.provider_message_id
-       returning id, processing_status, user_id`,
+       returning id, processing_status, user_id, result_body`,
       [
         id("inbound"),
         message.provider,
@@ -321,6 +367,9 @@ export class PostgresVerticalSliceApp {
   private async applyMessage(client: PoolClient, userId: string, inboundId: string, text: string): Promise<string> {
     const lower = text.trim().toLowerCase();
     if (lower.startsWith("link ")) return "WhatsApp linked";
+    const us4 = new Us4Commands(client, userId, inboundId);
+    const us4Result = await handleDeterministicUs4Message(text, `${inboundId}:us4`, us4);
+    if (us4Result !== undefined) return us4Result;
     if (lower === "start") {
       await this.startWorkout(client, userId);
       return "Started workout";
@@ -339,25 +388,13 @@ export class PostgresVerticalSliceApp {
       await this.logSets(client, userId, inboundId, commandKey, text);
     } catch (error) {
       if (!(error instanceof DomainError) || error.code !== "NO_SET_NOTATION" || !this.interpreter) throw error;
-      const activeContext = await client.query("select id from workout_sessions where user_id = $1 and status = 'ACTIVE'", [userId]);
+      const activeContext = await client.query("select w.id,e.display_name from workout_sessions w left join session_exercises se on se.id=w.active_session_exercise_id left join exercise_identities e on e.id=se.exercise_identity_id where w.user_id = $1 and w.status = 'ACTIVE'", [userId]);
+      const known = await client.query("select display_name from exercise_identities where (owner_user_id=$1 or owner_user_id is null) and merged_into_id is null", [userId]);
+      const aliases = await client.query("select a.alias_text,e.display_name from exercise_aliases a join exercise_identities e on e.id=a.exercise_identity_id where a.user_id=$1 and a.status='CONFIRMED' and e.merged_into_id is null", [userId]);
       const envelope = await this.interpreter.interpret({
-        userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0 }
+        userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0, ...(activeContext.rows[0]?.display_name ? { activeExercise: activeContext.rows[0].display_name } : {}), knownExerciseRefs: known.rows.map(row => row.display_name), confirmedAliases: aliases.rows.map(row => ({ alias: row.alias_text, exerciseRef: row.display_name })) }
       });
-      const result = await guardProposedAction(envelope, {
-        authorize: async () => {
-          const user = await client.query("select id from users where id = $1 and deleted_at is null", [userId]);
-          if (!user.rows[0]) throw new DomainError("User unavailable", "UNAUTHORIZED");
-        },
-        validateDomain: async () => {
-          if (envelope.action.type === "UNKNOWN" || envelope.action.type === "QUERY_HISTORY" || envelope.action.type === "QUERY_ANALYTICS") return;
-          const active = await client.query("select id from workout_sessions where user_id = $1 and status = 'ACTIVE'", [userId]);
-          if (!active.rows[0]) throw new DomainError("No active workout", "NO_ACTIVE_WORKOUT");
-        },
-        executeIdempotently: async () => "This request is not supported yet."
-      });
-      return result.status === "CLARIFICATION_REQUIRED" ? result.question
-        : result.status === "CONFIRMATION_REQUIRED" ? "This action requires confirmation and is not supported yet."
-        : result.body;
+      return us4.dispatchEnvelope(envelope, text, `${inboundId}:us4`);
     }
     return "Logged set";
   }
@@ -385,7 +422,7 @@ export class PostgresVerticalSliceApp {
       rep_target_min: number;
       rep_target_max: number;
     }>(
-      `select * from planned_exercises where session_template_id = $1 order by order_index`,
+      `select * from planned_exercises where session_template_id = $1 and removed_at is null order by order_index`,
       [row.next_session_template_id]
     );
     await client.query(
@@ -406,13 +443,13 @@ export class PostgresVerticalSliceApp {
           plannedExercise.exercise_identity_id,
           plannedExercise.id,
           plannedExercise.order_index,
-          plannedExercise.order_index === 0 ? "ACTIVE" : "PLANNED",
+          plannedExercise.order_index === planned.rows[0]?.order_index ? "IN_PROGRESS" : "PLANNED",
           plannedExercise.planned_set_count,
           plannedExercise.rep_target_min,
           plannedExercise.rep_target_max
         ]
       );
-      if (plannedExercise.order_index === 0) {
+      if (plannedExercise.order_index === planned.rows[0]?.order_index) {
         await client.query(`update workout_sessions set active_session_exercise_id = $1 where id = $2`, [
           sessionExerciseId,
           workoutId
@@ -429,6 +466,7 @@ export class PostgresVerticalSliceApp {
     );
     const active = workout.rows[0];
     if (!active) throw new DomainError("No active workout", "NO_ACTIVE_WORKOUT");
+    if (!active.active_session_exercise_id) throw new DomainError("Choose an active exercise", "EXERCISE_REQUIRED");
     const exercise = await client.query<{ exercise_identity_id: string; default_load_semantics: LoadSemantics }>(
       `select se.exercise_identity_id, e.default_load_semantics
        from session_exercises se join exercise_identities e on e.id = se.exercise_identity_id
@@ -440,7 +478,7 @@ export class PostgresVerticalSliceApp {
       [userId]
     );
     const previous = await client.query<{ load_value: string; weight_unit: WeightUnit; load_semantics: LoadSemantics }>(
-      `select load_value, weight_unit, load_semantics from workout_sets where session_exercise_id = $1 order by set_index desc limit 1`,
+      `select load_value, weight_unit, load_semantics from workout_sets where session_exercise_id = $1 and status='RECORDED' order by set_index desc limit 1`,
       [active.active_session_exercise_id]
     );
     const parsed = parseSetMessage(text, {
@@ -464,7 +502,7 @@ export class PostgresVerticalSliceApp {
     );
     for (const parsedSet of parsed) {
       const count = await client.query<{ count: string }>(
-        `select count(*) from workout_sets where session_exercise_id = $1`,
+        `select coalesce(max(set_index),0)::text as count from workout_sets where session_exercise_id = $1`,
         [active.active_session_exercise_id]
       );
       const setIndex = Number(count.rows[0]!.count) + 1;
@@ -489,6 +527,7 @@ export class PostgresVerticalSliceApp {
         ]
       );
     }
+    await client.query("update workout_sessions set version=version+1 where id=$1 and user_id=$2", [active.id, userId]);
   }
 
   private async finishWorkout(client: PoolClient, userId: string): Promise<void> {
@@ -499,7 +538,7 @@ export class PostgresVerticalSliceApp {
     const row = workout.rows[0];
     if (!row) throw new DomainError("No active workout", "NO_ACTIVE_WORKOUT");
     await client.query(
-      `update workout_sessions set status = 'COMPLETED', completion_intent = 'COMPLETE', completed_at = now(), active_session_exercise_id = null where id = $1`,
+      `update workout_sessions set status = 'COMPLETED', completion_intent = 'COMPLETE', completed_at = now(), active_session_exercise_id = null,version=version+1 where id = $1`,
       [row.id]
     );
     const next = await client.query<{ id: string; sequence_index: number }>(
@@ -531,10 +570,10 @@ export class PostgresVerticalSliceApp {
     const outboundId = id("outbound");
     await client.query(
       `insert into outbound_messages
-       (id, user_id, inbound_message_id, provider_account_id, provider_user_identity_hash, body_hash, status, sent_at)
-       values ($1, $2, $3, $4, $5, $6, 'SENT', now())
+       (id, user_id, inbound_message_id, provider_account_id, provider_user_identity_hash, body_hash, body, status, sent_at)
+       values ($1, $2, $3, $4, $5, $6, $7, 'SENT', now())
        on conflict do nothing`,
-      [outboundId, userId, inboundId, message.providerAccountId, message.providerUserIdentityHash, sha256(body)]
+      [outboundId, userId, inboundId, message.providerAccountId, message.providerUserIdentityHash, sha256(body), body]
     );
     await client.query(`update inbound_messages set outbound_message_id = $1 where id = $2 and outbound_message_id is null`, [
       outboundId,

@@ -8,6 +8,22 @@ import {
 } from "../../../persistence/src/index.js";
 import { LinkService } from "./link-service.js";
 import { WorkoutService } from "../workouts/workout-service.js";
+import { parseUs4Message, type Us4Action } from "../parser/us4-parser.js";
+
+export type Us4MessageHandlers = {
+  resolveConfirmation(text: string): Promise<string | undefined>;
+  resolveScopeClarification(text: string, key: string): Promise<string | undefined>;
+  dispatch(action: Us4Action, text: string, key: string): Promise<string>;
+};
+
+export async function handleDeterministicUs4Message(text: string, key: string, handlers: Us4MessageHandlers): Promise<string | undefined> {
+  const confirmation = await handlers.resolveConfirmation(text);
+  if (confirmation !== undefined) return confirmation;
+  const clarification = await handlers.resolveScopeClarification(text, `${key}:scope`);
+  if (clarification !== undefined) return clarification;
+  const action = parseUs4Message(text);
+  return action ? handlers.dispatch(action, text, key) : undefined;
+}
 
 export type ProcessOptions = {
   crashAfterCommandBeforeOutbound?: boolean;

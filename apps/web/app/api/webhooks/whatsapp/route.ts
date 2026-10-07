@@ -1,9 +1,12 @@
 import { productionApp } from "../../../../server/app.js";
 import { WhatsAppInboundAdapter } from "../../../../../../packages/messaging/src/index.js";
 
-export async function POST(input: { rawBody: string; signature: string; appSecret: string }) {
-  const adapter = new WhatsAppInboundAdapter(input.appSecret);
-  const messages = adapter.normalize(input.rawBody, input.signature);
-  const app = productionApp();
-  return Promise.all(messages.map((message) => app.processInbound(message)));
+import { apiResponse } from "../../../../server/http.js";
+export async function POST(request: Request) {
+  return apiResponse(request, async () => {
+    const secret = process.env.WHATSAPP_APP_SECRET;
+    if (!secret) throw new Error("WHATSAPP_APP_SECRET required");
+    const messages = new WhatsAppInboundAdapter(secret).normalize(await request.text(), request.headers.get("x-hub-signature-256") ?? "");
+    return Promise.all(messages.map(message => productionApp().processInbound(message)));
+  });
 }

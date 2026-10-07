@@ -1,7 +1,6 @@
 import { productionApp } from "../../../../server/app.js";
 
-export async function POST(input: { sessionToken: string }) {
-  const app = productionApp();
-  const userId = await app.currentUser(input.sessionToken);
-  return app.startNextWorkout(userId);
+import { apiResponse, requestSession } from "../../../../server/http.js";
+export async function POST(request: Request) {
+  return apiResponse(request, async () => { const app = productionApp(); return app.startNextWorkout(await app.currentUser(requestSession(request))); });
 }

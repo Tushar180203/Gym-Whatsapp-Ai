@@ -191,6 +191,7 @@ export function evaluateConfirmationPolicy(envelope: ProposedActionEnvelope): Co
   if ("scope" in action && action.scope === "AMBIGUOUS") reasonCodes.add("AMBIGUOUS_SCOPE");
   if ("scope" in action && action.scope === "PERMANENT_ROUTINE") reasonCodes.add("PERMANENT_CHANGE_CONFIRMATION");
   if (action.type === "UPDATE_ROUTINE_REQUEST") reasonCodes.add("PERMANENT_CHANGE_CONFIRMATION");
+  if (action.type === "CREATE_CUSTOM_EXERCISE" || action.type === "MAP_EXERCISE_ALIAS") reasonCodes.add("EXERCISE_IDENTITY_CONFIRMATION");
   if (action.type === "DELETE_SET" && action.targetRef !== "last-active-set") {
     reasonCodes.add("DESTRUCTIVE_CONFIRMATION");
   }

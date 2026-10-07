@@ -30,6 +30,10 @@ function rawWhatsApp(id: string, text: string, from = "15555550123"): string {
 async function resetDatabase(pool: Pool): Promise<void> {
   await pool.query(`
     DROP TABLE IF EXISTS
+      schema_migrations,
+      corrections,
+      pending_confirmations,
+      exercise_aliases,
       outbound_messages,
       command_executions,
       inbound_messages,
@@ -105,6 +109,7 @@ describePostgres("PostgreSQL deterministic vertical slice", () => {
       from pg_constraint con
       join pg_class c on c.oid = con.conrelid
       where con.contype = 'u'
+        and con.connamespace = current_schema()::regnamespace
         and c.relname in ('inbound_messages', 'command_executions', 'workout_sets', 'account_link_tokens', 'routine_sequence_cursors')
       group by c.relname
     `);

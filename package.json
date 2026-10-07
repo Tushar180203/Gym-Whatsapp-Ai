@@ -20,16 +20,24 @@
     "test:postgres": "REQUIRE_POSTGRES_TESTS=1 vitest run tests/postgres",
     "eval": "vitest run packages/evals tests/integration/ai packages/ai packages/contracts/src/ai",
     "eval:real-provider": "RUN_REAL_PROVIDER_EVAL=1 vitest run packages/evals/src/real-provider-smoke.test.ts",
-    "dev": "node --loader ts-node/esm"
+    "dev": "next dev apps/web --webpack",
+    "test:us4:web": "playwright test -c tests/e2e/us4/playwright.config.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
+    "lucide-react": "^1.52.0",
+    "next": "^16.4.0",
     "pg": "^8.23.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

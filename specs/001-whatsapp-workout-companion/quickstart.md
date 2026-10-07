@@ -86,8 +86,50 @@ quotas and data-handling terms are documented in research.md. OpenAI is optional
 future work, not a required key or paid fallback. The smoke test validates extracted fields, and failure
 fails the command. Live model quality remains unverified until this is run.
 
-The runtime fallback currently returns clarification or unsupported responses.
-Later-story action dispatch and pending-confirmation execution remain deferred.
+The runtime now dispatches the scoped US4 correction, exercise/session mutation,
+custom identity/alias and permanent exercise-template actions. Pending yes/confirm
+and no/cancel resolution runs before interpretation. Later-story history questions,
+PRs, analytics and coaching execution remain deferred.
+
+### US4 Verification And Local History Editor
+
+Use Node 22 and an isolated PostgreSQL test database; the PostgreSQL tests recreate
+their test tables/schemas, so do not point `TEST_DATABASE_URL` at production data.
+
+```bash
+npm install
+npm run lint
+npm run typecheck
+npm run test
+npm run test:integration
+npm run test:e2e
+npm run eval
+TEST_DATABASE_URL=postgresql://user:password@localhost:5432/workout_test npm run test:postgres
+TEST_DATABASE_URL=postgresql://user:password@localhost:5432/workout_test npm run test:us4:web
+```
+
+The browser command starts/stops its own Next.js server on port 3104, uses a
+synthetic provider key without live calls, and writes desktop/mobile screenshots
+under ignored `test-results/`. It defaults to `/usr/bin/google-chrome`; set
+`CHROME_PATH` for a different installed Chromium browser.
+
+For manual use, configure `DATABASE_URL`, `AI_PROVIDER=gemini`, `GEMINI_API_KEY`,
+`AI_MODEL`, `WHATSAPP_APP_SECRET` and the deployed `APP_ORIGIN`. Apply migrations
+through `PostgresVerticalSliceApp.migrate()` before serving; it now tracks applied
+migrations and adopts an existing 0001 database. Export environment variables in
+the server process (the root `.env` is not automatically loaded by Next's app-dir
+server), then run `npm run dev`. `/history/:workoutId` edits an owned completed or
+incomplete workout. Authentication uses the existing signup endpoint's HttpOnly
+session cookie; no new login/onboarding UI is included in US4.
+
+US4 scenarios: `actually that was 9`, `incline set 2 was actually 10`,
+`delete last set`, `do Squat first`, `skip Squat today`,
+`replace incline with Squat` followed by `today only` or `update my routine`,
+`add Red chest machine today` followed by confirmation, and explicit destructive
+commands `delete exercise <exact-name>`, `delete workout <owned-id>` or
+`delete history all`. Protected proposals expire after ten minutes and fail safely
+when their versioned targets change. Broad date-based history deletion requests
+that cannot be uniquely resolved ask for more precise targets.
 
 Inputs that may use AI:
 

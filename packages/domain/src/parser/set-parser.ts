@@ -22,10 +22,14 @@ export type ParseSetOptions = {
 };
 
 const setPattern =
-  /(?:(?<load>\d+(?:\.\d+)?)\s*(?<unit>kg|lb)?\s*(?<each>each)?\s*(?:(?:x|for)\s*)?(?<reps>\d+))|(?:(?<same>same)\s*x\s*(?<sameReps>\d+))/gi;
+  /(?:(?<load>\d+(?:\.\d+)?)\s*(?<unit>kg|lb)?\s*(?:(?<each>each)\s+|(?:x|for)\s*|(?<=\s))(?<reps>\d+))|(?:(?<same>same)\s*x\s*(?<sameReps>\d+))/gi;
 
 export function hasSetNotation(input: string): boolean {
-  return input.match(setPattern) !== null;
+  if (!input.match(setPattern)) return false;
+  const remainder = input.replace(setPattern, "")
+    .replace(/\bfailed\s+(?:the\s+)?\d+(?:st|nd|rd|th)\b/gi, "")
+    .replace(/[,;]/g, "").trim();
+  return remainder.length === 0;
 }
 
 export function parseSetMessage(input: string, options: ParseSetOptions): ParsedSet[] {

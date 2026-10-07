@@ -2,7 +2,7 @@ import { workoutActionSchemaVersion, ProposedActionEnvelopeSchema } from "../../
 import { z } from "zod";
 import type { PromptRegistry } from "./interfaces.js";
 
-export const intentPromptVersion = "intent-interpreter.prompt.v2" as const;
+export const intentPromptVersion = "intent-interpreter.prompt.v3" as const;
 export const defaultIntentModel = "gemini-3.5-flash-lite" as const;
 
 export class StaticPromptRegistry implements PromptRegistry {
@@ -25,7 +25,12 @@ export class StaticPromptRegistry implements PromptRegistry {
         "Always set forbiddenDirectMutation to true: the interpreter is forbidden from durable writes.",
         "Do not invent missing workout numbers, units, exercise identities, or history.",
         "Confidence is advisory and never bypasses clarification, authorization, validation, or confirmation.",
-        "Destructive, permanent, identity-merge, and completed-history changes must require confirmation."
+        "Destructive, permanent, identity-merge, custom identity/alias, and completed-history changes must require confirmation.",
+        "For corrections, preserve only explicitly supplied replacement fields; never invent load or reps.",
+        "Use targetRef exercise:<exact name>:set:<ordinal>, exercise:<exact name>:last, or completed:exercise:<exact name>:set:<ordinal> when specified.",
+        "Unclear correction targets require clarification. Similar exercises are separate identities, never automatically merged.",
+        "Today/this session/do X first means SESSION_ONLY. From now on/permanently means PERMANENT_ROUTINE.",
+        "Ambiguous replacements require clarification: Today only or update your routine?"
       ].join("\n"),
       responseSchema: proposedActionJsonSchema
     };

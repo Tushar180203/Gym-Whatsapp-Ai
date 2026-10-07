@@ -23,7 +23,7 @@ async function runtimeCase(text: string, output: unknown, activeWorkout = true) 
     if (sql.includes("select id") && sql.includes("from workout_sessions")) return { rows: activeWorkout ? [{ id: "workout-1", active_session_exercise_id: "exercise-1" }] : [] };
     if (sql.includes("from session_exercises")) return { rows: [{ exercise_identity_id: "identity-1", default_load_semantics: "TOTAL_LOAD" }] };
     if (sql.includes("from user_profiles")) return { rows: [{ preferred_weight_unit: "KG" }] };
-    if (sql.includes("select count(*)")) return { rows: [{ count: "0" }] };
+    if (sql.includes("max(set_index)")) return { rows: [{ count: "0" }] };
     return { rows: [] };
   });
   const client = { query, release: vi.fn() } as unknown as PoolClient;
@@ -62,6 +62,11 @@ describe("normalized inbound production AI fallback", () => {
     expect(provider.requests).toHaveLength(1);
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(false);
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into command_executions"))).toBe(false);
+  });
+  it("never treats numeric notation inside a conversational correction as a new set", async () => {
+    const { provider, query, error } = await runtimeCase("actually that was 45x9", unknown);
+    expect(error).toBeUndefined(); expect(provider.requests).toHaveLength(1);
+    expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(false);
   });
 
   it("rolls back invalid provider output before applying any workout command", async () => {
