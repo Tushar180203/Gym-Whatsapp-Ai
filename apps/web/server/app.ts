@@ -1,25 +1,21 @@
-import { AuthService, InboundMessageProcessor, LinkService, ProfileService, RoutineService, WorkoutService } from "../../../packages/domain/src/index.js";
-import { InMemoryStore, PostgresVerticalSliceApp } from "../../../packages/persistence/src/index.js";
+import { PostgresVerticalSliceApp } from "../../../packages/persistence/src/index.js";
 import { createStructuredOutputClient, StaticPromptRegistry, StructuredIntentInterpreter } from "../../../packages/ai/src/index.js";
-
-export const inMemoryStore = new InMemoryStore();
-export const authService = new AuthService(inMemoryStore);
-export const profileService = new ProfileService(inMemoryStore);
-export const routineService = new RoutineService(inMemoryStore);
-export const linkService = new LinkService(inMemoryStore);
-export const inboundMessageProcessor = new InboundMessageProcessor(inMemoryStore);
-export const workoutService = new WorkoutService(inMemoryStore);
+import { runtimeEnv } from "../../../packages/contracts/src/env.js";
+import { RateLimitService } from "../../../packages/domain/src/rate-limit/rate-limit-service.js";
+import { observe } from "./observability.js";
+const inboundLimit = new RateLimitService(120);
+const aiLimit = new RateLimitService(20);
 
 let postgresApp: PostgresVerticalSliceApp | null = null;
 
 export function productionApp(): PostgresVerticalSliceApp {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is required for the production PostgreSQL persistence path");
-  }
+  const { DATABASE_URL: connectionString } = runtimeEnv();
   postgresApp ??= new PostgresVerticalSliceApp({
     connectionString,
-    interpreter: new StructuredIntentInterpreter(createStructuredOutputClient(), new StaticPromptRegistry())
+    interpreter: new StructuredIntentInterpreter(createStructuredOutputClient(), new StaticPromptRegistry()),
+    observe,
+    checkInboundLimit: key => inboundLimit.check(key),
+    checkAiLimit: key => aiLimit.check(key)
   });
   return postgresApp;
 }

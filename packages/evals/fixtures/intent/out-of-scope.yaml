@@ -1,0 +1,266 @@
+[
+  {
+    "id": "scope-programming",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Create my next 12 week workout program",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-progression",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Increase my bench weight automatically every week",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-deload",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Decide when I should deload",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-nutrition",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Plan my macros and meals",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-medical",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Diagnose my shoulder pain and prescribe rehab",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-social",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Post my workout to a social feed",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-wearable",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Sync my smartwatch training data",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "scope-marketplace",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": [
+      "FR-077"
+    ],
+    "conversationContext": {
+      "activeWorkout": true
+    },
+    "userInput": "Find and book a personal trainer",
+    "expectedAction": {
+      "type": "UNKNOWN"
+    },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": [
+      "createsProgram",
+      "directMutation",
+      "authoritativeAnswer",
+      "inventedMetrics"
+    ],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "UNKNOWN",
+        "reason": "Outside the approved factual workout companion scope."
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": [],
+      "forbiddenDirectMutation": true
+    }
+  }
+]

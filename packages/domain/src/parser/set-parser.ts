@@ -39,6 +39,7 @@ export function parseSetMessage(input: string, options: ParseSetOptions): Parsed
   for (const match of lower.matchAll(setPattern)) {
     const groups = match.groups ?? {};
     if (groups.same) {
+      if (Number(groups.sameReps) <= 0) throw new DomainError("Reps must be positive", "INVALID_SET_VALUES");
       if (!options.previousSet) {
         throw new DomainError("Cannot resolve same without a previous set", "AMBIGUOUS_SAME");
       }
@@ -54,7 +55,7 @@ export function parseSetMessage(input: string, options: ParseSetOptions): Parsed
 
     const loadValue = Number(groups.load);
     const reps = Number(groups.reps);
-    if (!Number.isFinite(loadValue) || !Number.isInteger(reps)) {
+    if (!Number.isFinite(loadValue) || !Number.isInteger(reps) || reps <= 0) {
       throw new DomainError("Missing required numeric values", "MISSING_NUMERIC_VALUES");
     }
     const explicitUnit = groups.unit?.toUpperCase() as WeightUnit | undefined;

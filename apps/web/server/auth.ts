@@ -1,1 +1,1 @@
-export { authService } from "./app.js";
+export { productionApp } from "./app.js";

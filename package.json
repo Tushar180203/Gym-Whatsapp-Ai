@@ -21,11 +21,15 @@
     "eval": "vitest run packages/evals tests/integration/ai packages/ai packages/contracts/src/ai",
     "eval:real-provider": "RUN_REAL_PROVIDER_EVAL=1 vitest run packages/evals/src/real-provider-smoke.test.ts",
     "dev": "next dev apps/web --webpack",
+    "start": "NODE_ENV=production node --experimental-strip-types scripts/check-runtime.mjs && next start apps/web",
     "build": "next build apps/web --webpack",
     "test:us4:web": "playwright test -c tests/e2e/us4/playwright.config.ts",
     "test:us5:e2e": "playwright test -c tests/e2e/us5/playwright.config.ts",
     "test:us6:web": "playwright test -c tests/e2e/us6/playwright.config.ts",
-    "test:us7:web": "playwright test -c tests/e2e/us7/playwright.config.ts"
+    "test:us7:web": "playwright test -c tests/e2e/us7/playwright.config.ts",
+    "test:release:web": "playwright test -c tests/e2e/release/playwright.config.ts",
+    "check:runtime": "node --experimental-strip-types scripts/check-runtime.mjs",
+    "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
@@ -43,6 +47,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

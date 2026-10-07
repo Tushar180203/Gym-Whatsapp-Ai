@@ -185,7 +185,7 @@ export function parseProposedActionEnvelope(value: unknown): ProposedActionEnvel
 
 export function evaluateConfirmationPolicy(envelope: ProposedActionEnvelope): ConfirmationPolicyDecision {
   const reasonCodes = new Set<string>();
-  if (envelope.requiresClarification) reasonCodes.add("CLARIFICATION_REQUIRED");
+  if (envelope.requiresClarification || envelope.confidence === "low") reasonCodes.add("CLARIFICATION_REQUIRED");
 
   const action = envelope.action;
   if ("scope" in action && action.scope === "AMBIGUOUS") reasonCodes.add("AMBIGUOUS_SCOPE");

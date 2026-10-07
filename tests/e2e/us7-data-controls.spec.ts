@@ -28,6 +28,9 @@ for (const width of [1280, 390]) test(`review/export/confirmed workout deletion 
   await page.screenshot({ path: `/tmp/us7-data-${width}.png`, fullPage: true });
   await page.getByRole("button", { name: "Delete workout data", exact: true }).click();
   const dialog = page.getByRole("dialog"); await expect(dialog).toBeVisible(); await expect(dialog.getByRole("button", { name: "Confirm deletion", exact: true })).toBeDisabled();
+  expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press("Escape"); await expect(dialog).not.toBeVisible();
+  await page.getByRole("button", { name: "Review confirmation" }).click(); await expect(dialog).toBeVisible();
   expect(await app.history(userId)).toHaveLength(1);
   await dialog.getByRole("checkbox").check(); await page.screenshot({ path: `/tmp/us7-confirm-${width}.png`, fullPage: true });
   await dialog.getByRole("button", { name: "Confirm deletion", exact: true }).click(); await expect(dialog).not.toBeVisible();

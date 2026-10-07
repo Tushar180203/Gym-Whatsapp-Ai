@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import { PostgresVerticalSliceApp } from "../../../packages/persistence/src/index.js";
 import { WhatsAppInboundAdapter, type WhatsAppFixturePayload } from "../../../packages/messaging/src/index.js";
@@ -17,7 +18,7 @@ async function runtimeCase(text: string, output: unknown, activeWorkout = true) 
     interpreter: new StructuredIntentInterpreter(provider, new StaticPromptRegistry("mock"))
   });
   const query = vi.fn(async (sql: string) => {
-    if (sql.includes("returning id, processing_status")) return { rows: [{ id: "inbound-1", processing_status: "RECEIVED", user_id: null }] };
+    if (sql.includes("returning id, processing_status")) return { rows: [{ id: "inbound-1", processing_status: "RECEIVED", user_id: null, provider_user_identity_hash: createHash("sha256").update("15555550123").digest("hex") }] };
     if (sql.includes("select l.user_id")) return { rows: [{ user_id: "user-1" }] };
     if (sql.includes("select id from users")) return { rows: [{ id: "user-1" }] };
     if (sql.includes("select id") && sql.includes("from workout_sessions")) return { rows: activeWorkout ? [{ id: "workout-1", active_session_exercise_id: "exercise-1" }] : [] };

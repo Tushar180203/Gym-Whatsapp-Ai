@@ -60,7 +60,7 @@ TEST_DATABASE_URL=postgresql://user@localhost:5432/workout_test npm run test:pos
 TEST_DATABASE_URL=postgresql://user@localhost:5432/workout_test npm run test:us6:web
 ```
 
-The 14 US6 eval fixtures use the mock client. Live Gemini quality evaluation remains opt-in. US7 is implemented below; later hardening remains deferred.
+The 14 US6 eval fixtures use the mock client. Live Gemini quality evaluation remains opt-in. US7 is implemented below; final hardening evidence is linked under Release Review.
 
 ## US7: Stored Data, Export And Deletion
 
@@ -68,7 +68,7 @@ The 14 US6 eval fixtures use the mock client. Live Gemini quality evaluation rem
 
 Deletion proposals expire after ten minutes; target changes make confirmation stale. Owner/key uniqueness and the existing per-user transaction lock make requests, concurrent confirmations and retries idempotent. Workout-data deletion soft-deletes recorded sessions/sets and removes their access through history, PR, previous-performance, analytics, bounded questions and export. Configuration stays available. Old exports are revoked and old message replays cannot return removed facts. Account deletion also persists the user tombstone, invalidates sessions, revokes links and consumes outstanding link tokens. Only the exact original-session completed account-deletion receipt can replay; it grants no renewed session or data access.
 
-Apply `packages/persistence/migrations/0005_us7.sql` once after `0004_us6.sql` on existing databases before running US7. New managed databases use `migrate()` to apply all five migrations. Soft-deleted/audit records remain persisted; physical erasure, backup handling and retention/privacy commitments are not promised by this implementation and still require release decisions. Requests/audit summaries contain IDs, operation/status, timestamps and counts, not unnecessary sensitive payloads. Gemini does not decide or execute data controls.
+Use `npm run db:migrate` to apply the ordered migrations through `0006_release_integrity.sql`; do not reapply SQL manually after it is recorded in the ledger. Soft-deleted/audit records remain persisted; physical erasure, backup handling and retention/privacy commitments are not promised by this implementation and still require release decisions. Requests/audit summaries contain IDs, operation/status, timestamps and counts, not unnecessary sensitive payloads. Gemini does not decide or execute data controls.
 
 ```bash
 # Disposable test database only: these suites reset tables/test schemas.
@@ -76,4 +76,13 @@ TEST_DATABASE_URL=postgresql://user@localhost:5432/workout_test npm run test:pos
 TEST_DATABASE_URL=postgresql://user@localhost:5432/workout_test npm run test:us7:web
 ```
 
-Only US7 is added in this pass; later hardening remains deferred.
+US7 evidence describes that implementation pass. See Release Review for subsequent hardening and unresolved release blockers.
+
+## Release Review
+
+Hardening evidence and unresolved release blockers are in
+`specs/001-whatsapp-workout-companion/validation-results.md`,
+`traceability-review.md`, and `release-readiness.md` in that directory.
+Run `npm run db:migrate` before serving an upgraded database; migration 0006 adds
+ownership/context integrity constraints. `npm start` checks production configuration.
+The repository is ready for human review, not public production sign-off.

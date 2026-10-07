@@ -15,8 +15,15 @@ export function AnalyticsView({ initialData }: { initialData: AnalyticsData }) {
   }
   const progression = data.progression.filter(row => row.exerciseIdentityId === exerciseId);
   const identity = data.identities.find(row => row.id === exerciseId);
+  function navigateTab(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const views = ["Overview", "Muscles", "Exercises"], index = views.indexOf(tab);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? 2 : (index + (event.key === "ArrowRight" ? 1 : -1) + 3) % 3;
+    setTab(views[next]!); document.getElementById(`tab-${views[next]}`)?.focus();
+  }
   return <section className="analytics" aria-label="Workout analytics" data-ready={ready}>
-    <div className="view-toolbar"><div role="tablist" aria-label="Analytics views">{["Overview", "Muscles", "Exercises"].map(view => <button key={view} type="button" role="tab" disabled={!ready} aria-selected={tab === view} aria-controls={`panel-${view}`} id={`tab-${view}`} onClick={() => setTab(view)}>{view}</button>)}</div><button type="button" title="Refresh analytics" aria-label="Refresh analytics" className="icon-button" disabled={busy || !ready} onClick={refresh}><RefreshCw size={18}/></button></div>
+    <div className="view-toolbar"><div role="tablist" aria-label="Analytics views" onKeyDown={navigateTab}>{["Overview", "Muscles", "Exercises"].map(view => <button key={view} type="button" role="tab" tabIndex={tab === view ? 0 : -1} disabled={!ready} aria-selected={tab === view} aria-controls={tab === view ? `panel-${view}` : undefined} id={`tab-${view}`} onClick={() => setTab(view)}>{view}</button>)}</div><button type="button" title="Refresh analytics" aria-label="Refresh analytics" className="icon-button" disabled={busy || !ready} onClick={refresh}><RefreshCw size={18}/></button></div>
     {error && <p className="error" role="alert">{error}</p>}
     <p className="period">{data.month} · Week of {data.weekStarting} · UTC</p>
     <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>

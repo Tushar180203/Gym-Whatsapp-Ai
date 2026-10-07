@@ -50,7 +50,7 @@ export class Us4Commands {
     const envelope = parseProposedActionEnvelope(value);
     await this.authorize();
     if ("scope" in envelope.action && envelope.action.scope === "AMBIGUOUS") return this.scopeQuestion(envelope.action, input);
-    if (envelope.requiresClarification) return envelope.clarificationQuestion ?? "Please clarify the requested change.";
+    if (envelope.requiresClarification || envelope.confidence === "low") return envelope.clarificationQuestion ?? "Please clarify the requested change.";
     return this.dispatch(envelope.action, input, key);
   }
 

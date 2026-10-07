@@ -1,6 +1,16 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { NormalizedWhatsAppMessage } from "../../../contracts/src/index.js";
 import { DomainError } from "../../../persistence/src/index.js";
+import { z } from "zod";
+const payloadSchema = z.object({
+  object: z.literal("whatsapp_business_account"),
+  entry: z.array(z.object({
+    id: z.string().min(1), changes: z.array(z.object({ value: z.object({
+      metadata: z.object({ phone_number_id: z.string().min(1) }),
+      messages: z.array(z.object({ id: z.string().min(1), from: z.string().min(1), text: z.object({ body: z.string().max(8192) }).optional() })).max(100).optional()
+    }) })).max(100)
+  })).max(100)
+});
 
 export type WhatsAppFixturePayload = {
   object: "whatsapp_business_account";
@@ -40,11 +50,12 @@ export class WhatsAppInboundAdapter {
 
   normalize(rawBody: string, signature: string): NormalizedWhatsAppMessage[] {
     this.verifyWebhookPost(rawBody, signature);
-    const payload = JSON.parse(rawBody) as WhatsAppFixturePayload;
+    const payload = payloadSchema.parse(JSON.parse(rawBody));
     const messages: NormalizedWhatsAppMessage[] = [];
     for (const entry of payload.entry) {
       for (const change of entry.changes) {
         for (const message of change.value.messages ?? []) {
+          if (!message.text) continue;
           messages.push({
             provider: "WHATSAPP_CLOUD_API",
             providerAccountId: change.value.metadata.phone_number_id,

@@ -183,6 +183,16 @@ rejected locally. Sanitized evidence and reproducible commands are in
 
 ## Open Technical Questions
 
+### Release Hardening Decisions (2026-10-07)
+
+- T124-T129 review found incomplete approved setup/transport paths; these remain release blockers rather than being expanded during hardening. See traceability-review.md.
+- Use bounded process-local pilot limits with hashed identity/session keys; no queues or distributed limiter. Auth entry is conservatively shared until hosting defines a trusted proxy/IP boundary. Production edge controls remain a deployment decision.
+- Keep explicit allowlisted event fields, no raw user/provider payloads or credential values. Configuration validation reports variable names only; npm start requires production HTTPS APP_ORIGIN.
+- Add migration 0006 only for existing owner/parent/cursor/set invariants and current-query indexes. Preserve earlier migrations and all current valid data; mismatched legacy rows fail migration for operator review. Identity consistency is checked at commit to support already-approved confirmed merges.
+- Persist outbound results as PENDING, not falsely SENT. Real transport remains absent. Existing falsely SENT records require manual reconciliation before delivery is enabled.
+- Declare the already-installed tsx runner as a direct development dependency for an explicit db:migrate command. No persistence or hosting architecture change.
+- Review privacy/erasure/retention and external provider processing before production; soft deletion is not physical or backup erasure. Development dependency audit needs a reviewed major-version remediation, not force fixes.
+
 ### US7 Implementation Decisions (2026-10-07)
 
 - Use the approved synchronous small-account data-control path: one durable request table with owner/key uniqueness, one pending deletion per user and per-user PostgreSQL transaction locks. No queue, worker, additional agent or new service was needed.

@@ -18,10 +18,14 @@ import { workoutAnalytics } from "../../analytics/src/workout-analytics-service.
 import { answerHistoryQuestion, coachingBoundary, type HistoryAction, type HistorySnapshot } from "../../analytics/src/history-question-service.js";
 import { ProposedActionSchema } from "../../contracts/src/ai/actions.js";
 import { isCoachingQuestion, parseHistoryQuestion } from "../../domain/src/messaging/history-query-parser.js";
+import type { SafeEvent } from "../../domain/src/observability/events.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
   interpreter?: IntentInterpreter;
+  observe?: (event: SafeEvent) => void;
+  checkInboundLimit?: (key: string) => void;
+  checkAiLimit?: (key: string) => void;
 };
 
 export type PgHistoryEntry = {
@@ -44,10 +48,12 @@ export type EditableHistory = {
 export class PostgresVerticalSliceApp {
   readonly pool: Pool;
   private readonly interpreter: IntentInterpreter | undefined;
+  private readonly config: PostgresSliceConfig;
 
   constructor(config: PostgresSliceConfig) {
     this.pool = new Pool({ connectionString: config.connectionString });
     this.interpreter = config.interpreter;
+    this.config = config;
   }
 
   async close(): Promise<void> {
@@ -61,7 +67,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -176,11 +182,14 @@ export class PostgresVerticalSliceApp {
   }
 
   async processInbound(message: NormalizedWhatsAppMessage, options: { crashAfterCommandBeforeOutbound?: boolean } = {}) {
+    this.config.checkInboundLimit?.(sha256(JSON.stringify([message.provider,message.providerAccountId,message.providerUserIdentityHash])));
+    const started = performance.now();
     const client = await this.pool.connect();
     try {
       await client.query("begin");
       const inbound = await this.upsertInbound(client, message);
       if (inbound.processing_status === "COMPLETED") {
+        this.config.observe?.({ event: "duplicate_message" });
         if (inbound.user_id) {
           await client.query("select pg_advisory_xact_lock(hashtext($1))", [inbound.user_id]);
           const user = (await client.query("select deleted_at,data_control_generation from users where id=$1", [inbound.user_id])).rows[0];
@@ -215,9 +224,11 @@ export class PostgresVerticalSliceApp {
       return { reused: false, body };
     } catch (error) {
       await client.query("rollback");
+      this.config.observe?.({ event: "processing_failure", code: error instanceof DomainError ? error.code : "PROCESSING_FAILED" });
       throw error;
     } finally {
       client.release();
+      this.config.observe?.({ event: "message_latency", durationMs: performance.now() - started });
     }
   }
 
@@ -227,21 +238,24 @@ export class PostgresVerticalSliceApp {
       [userId]
     );
     const entries: PgHistoryEntry[] = [];
-    for (const workout of workouts.rows) {
       const sets = await this.pool.query<{
+        workout_session_id: string;
         load_value: string;
         weight_unit: WeightUnit;
         load_semantics: LoadSemantics;
         reps: number;
         set_index: number;
       }>(
-        `select load_value, weight_unit, load_semantics, reps, set_index
-         from workout_sets where workout_session_id = $1 and user_id=$2 and status='RECORDED' order by created_at,set_index`,
-        [workout.id, userId]
+        `select workout_session_id,load_value, weight_unit, load_semantics, reps, set_index
+         from workout_sets where workout_session_id = any($1::text[]) and user_id=$2 and status='RECORDED' order by created_at,set_index`,
+        [workouts.rows.map(workout => workout.id), userId]
       );
+    const byWorkout = new Map<string, typeof sets.rows>();
+    for (const set of sets.rows) { const rows = byWorkout.get(set.workout_session_id) ?? []; rows.push(set); byWorkout.set(set.workout_session_id, rows); }
+    for (const workout of workouts.rows) {
       entries.push({
         workout,
-        sets: sets.rows.map((set) => ({
+        sets: (byWorkout.get(workout.id) ?? []).map((set) => ({
           loadValue: Number(set.load_value),
           weightUnit: set.weight_unit,
           loadSemantics: set.load_semantics,
@@ -405,13 +419,14 @@ export class PostgresVerticalSliceApp {
       processing_status: string;
       user_id: string | null;
       result_body: string | null;
+      provider_user_identity_hash: string;
     }>(
       `insert into inbound_messages
        (id, provider, provider_account_id, provider_message_id, provider_user_identity_hash, text_redacted, raw_payload_hash, processing_status)
        values ($1, $2, $3, $4, $5, $6, $7, 'RECEIVED')
        on conflict (provider_account_id, provider_message_id) do update
        set provider_message_id = excluded.provider_message_id
-       returning id, processing_status, user_id, result_body`,
+       returning id, processing_status, user_id, result_body, provider_user_identity_hash`,
       [
         id("inbound"),
         message.provider,
@@ -422,7 +437,9 @@ export class PostgresVerticalSliceApp {
         message.rawPayloadHash
       ]
     );
-    return result.rows[0]!;
+    const inbound = result.rows[0]!;
+    if (inbound.provider_user_identity_hash !== message.providerUserIdentityHash) throw new DomainError("Message identity mismatch", "UNAUTHORIZED");
+    return inbound;
   }
 
   private async resolveUser(client: PoolClient, message: NormalizedWhatsAppMessage): Promise<string> {
@@ -510,13 +527,18 @@ export class PostgresVerticalSliceApp {
       await this.logSets(client, userId, inboundId, commandKey, text);
     } catch (error) {
       if (!(error instanceof DomainError) || error.code !== "NO_SET_NOTATION" || !this.interpreter) throw error;
+      this.config.checkAiLimit?.(userId);
+      const aiStarted = performance.now();
       const activeContext = await client.query("select w.id,e.display_name from workout_sessions w left join session_exercises se on se.id=w.active_session_exercise_id left join exercise_identities e on e.id=se.exercise_identity_id where w.user_id = $1 and w.status = 'ACTIVE'", [userId]);
       const known = await client.query("select display_name from exercise_identities where (owner_user_id=$1 or owner_user_id is null) and merged_into_id is null", [userId]);
       const aliases = await client.query("select a.alias_text,e.display_name from exercise_aliases a join exercise_identities e on e.id=a.exercise_identity_id where a.user_id=$1 and a.status='CONFIRMED' and e.merged_into_id is null", [userId]);
-      const envelope = await this.interpreter.interpret({
+      let envelope;
+      try { envelope = await this.interpreter.interpret({
         userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0, ...(activeContext.rows[0]?.display_name ? { activeExercise: activeContext.rows[0].display_name } : {}), knownExerciseRefs: known.rows.map(row => row.display_name), confirmedAliases: aliases.rows.map(row => ({ alias: row.alias_text, exerciseRef: row.display_name })) }
-      });
+      }); } catch (error) { this.config.observe?.({ event: "ai_failure", code: "AI_INTERPRETATION_FAILED" }); throw error; }
+      this.config.observe?.({ event: "message_latency", path: "AI", durationMs: performance.now() - aiStarted });
       const validated = parseProposedActionEnvelope(envelope);
+      if (validated.confidence === "low") return "Please clarify the requested action.";
       if (validated.requiresClarification && (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS")) return "Which exact exercise, workout session or muscle do you mean?";
       if (validated.requiresClarification) return validated.clarificationQuestion ?? "Please clarify the request.";
       if (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS") return answerHistoryQuestion(await new AnalyticsQueries(client, userId).snapshot(), validated.action);
@@ -529,6 +551,7 @@ export class PostgresVerticalSliceApp {
       }
       return withContext(await us4.dispatchEnvelope(validated, text, `${inboundId}:us4`));
     }
+    this.config.observe?.({ event: "message_latency", path: "DETERMINISTIC" });
     return "Logged set";
   }
 
@@ -676,7 +699,7 @@ export class PostgresVerticalSliceApp {
     await client.query(
       `insert into outbound_messages
        (id, user_id, inbound_message_id, provider_account_id, provider_user_identity_hash, body_hash, body, status, sent_at)
-       values ($1, $2, $3, $4, $5, $6, $7, 'SENT', now())
+       values ($1, $2, $3, $4, $5, $6, $7, 'PENDING', null)
        on conflict do nothing`,
       [outboundId, userId, inboundId, message.providerAccountId, message.providerUserIdentityHash, sha256(body), body]
     );

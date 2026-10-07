@@ -1,5 +1,6 @@
 :root { font-family: Arial, sans-serif; color: #20242a; background: #f5f7f8; letter-spacing: 0; }
 * { box-sizing: border-box; }
+:focus-visible { outline: 3px solid #256797; outline-offset: 3px; }
 body { margin: 0; }
 .brand { padding: 18px 28px; background: #fff; border-bottom: 1px solid #dce1e4; display: flex; align-items: center; gap: 12px; font-weight: 700; }
 .brand-mark { display: grid; place-items: center; width: 32px; height: 32px; background: #17725b; color: white; border-radius: 4px; }
