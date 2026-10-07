@@ -18,12 +18,14 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/integration/vertical-slices",
     "test:postgres": "REQUIRE_POSTGRES_TESTS=1 vitest run tests/postgres",
-    "eval": "node -e \"console.log('AI evals are deferred for the deterministic vertical slice')\"",
+    "eval": "vitest run packages/evals tests/integration/ai packages/ai packages/contracts/src/ai",
+    "eval:real-provider": "RUN_REAL_PROVIDER_EVAL=1 vitest run packages/evals/src/real-provider-smoke.test.ts",
     "dev": "node --loader ts-node/esm"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -78,12 +78,38 @@
 
 ## Decision: Recommend Strict Structured Output Support For Initial AI Provider
 
-**Rationale**: The implementation needs JSON-schema-shaped action outputs, validation, versioned schemas, and regression tests. OpenAI Responses API with structured outputs is a suitable initial provider candidate because its docs describe strict schema outputs for application workflows. The provider remains behind a local interface so the domain does not depend on OpenAI response formats.
+**Rationale**: The implementation needs JSON-schema-shaped action outputs, local validation, versioned schemas, and regression tests. Gemini Developer API supports structured JSON output and is the initial free-tier MVP provider. The provider remains behind a local interface so the domain does not depend on Gemini response formats. Provider schema subsets never replace the complete local Zod contract.
 
 **Alternatives considered**:
 
 - Provider-neutral text-only completions: rejected because the action contract needs structured outputs.
 - Local model only: not chosen for MVP because reliability, latency, and operational effort are unknown.
+
+## Decision: Initial MVP AI Adapter Uses Gemini Developer API Free Tier
+
+**Rationale**: Gemini Developer API is the initial MVP provider because development must use a free AI option. Google's pricing lists free input/output for `gemini-3.5-flash-lite`, and its model documentation supports structured outputs for classification/extraction. Configure `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, and `AI_MODEL` (default `gemini-3.5-flash-lite`). The REST adapter remains behind `StructuredOutputClient`; `IntentInterpreter` and workout domain types remain provider-independent. All output is validated against existing local Zod schemas after provider JSON decoding. Gemini's supported schema subset omits unsupported constraints (including boolean literals), which remain enforced locally. Normal tests/evals use mocks; live Gemini smoke tests remain explicitly opt-in. Offline evals establish boundary behavior, not live model accuracy.
+
+**Free-tier constraints**: Use an unbilled free-tier project; model selection alone cannot guarantee the billing tier. Free-tier quotas/availability are account-dependent, and quota failures surface as local rate-limit errors with no paid fallback. Google's free-tier pricing states data may be used to improve its products; use synthetic/non-sensitive data for development and review those terms before sending real user workout/chat data. API keys and raw provider errors are never included in routine logs.
+
+**Model availability**: Google's current model page limits Gemini 2.5 access to existing users and directs new projects to newer models. The default therefore uses the stable, free-tier-compatible `gemini-3.5-flash-lite`. Explicit `AI_MODEL` overrides remain available for account-specific supported models; runtime does not automatically change models on quota or access errors.
+
+**Verified transport compatibility**: Live synthetic probes confirmed that this
+Gemini endpoint accepts `generationConfig.responseMimeType=application/json` and
+`generationConfig.responseSchema`, but rejects `application/json` under
+`responseFormat.text.mimeType`. Its native Schema rejects `additionalProperties`.
+Removing that keyword allowed every reduction phase through all 18 action variants
+to succeed; the action union and nullable `anyOf` branches need no flattening.
+Local Zod strictness remains unchanged. Prompt `intent-interpreter.prompt.v2`
+explicitly requires `forbiddenDirectMutation=true`; a false value is still
+rejected locally. Sanitized evidence and reproducible commands are in
+`packages/evals/diagnostics/README.md`.
+
+**Alternatives considered**:
+
+- OpenAI Responses API: optional future provider rather than the required initial provider. Its existing adapter remains isolated and available for a future explicit selection; the MVP runtime does not select it or fall back to it.
+- Hard-code a premium frontier model: rejected for MVP cost/latency until eval evidence requires it.
+- Leave only mocks: rejected because the product needs a real production adapter, even though real-provider smoke tests stay opt-in.
+- Provider-specific domain types: rejected by the provider-independence principle.
 
 ## Decision: Version Prompts, Schemas, And Eval Cases
 
@@ -151,11 +177,14 @@
 - Choose Prisma or Drizzle after implementation preferences are known.
 - Choose the auth library/provider after deployment and account requirements are known.
 - Choose hosting and secret management before production.
-- Measure candidate AI models against eval cases before finalizing model selection.
+- Measure candidate AI models against eval cases before changing the default model selection.
 - Define production privacy, retention, third-party processing, and model-training commitments before release.
 
 ## External References Consulted
 
 - [OpenAI Structured Outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), for the provider recommendation criteria around strict schema-shaped outputs.
+- [Gemini Developer API pricing](https://ai.google.dev/gemini-api/docs/pricing), for the initial free-tier choice and data-handling terms.
+- [Gemini 3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite), for classification/extraction and structured output support.
+- [Gemini GenerateContent structured output](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), for the REST structured JSON adapter.
 - [Meta-hosted WhatsApp Cloud API webhook SDK reference](https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/webhooks/start/), for webhook verification and signature-boundary planning.
 - [WhatsApp Business Platform policy](https://whatsappbusiness.com/policy/?faq=5), for the service-window/template constraint that belongs at the messaging boundary.

@@ -24,6 +24,10 @@ export type ParseSetOptions = {
 const setPattern =
   /(?:(?<load>\d+(?:\.\d+)?)\s*(?<unit>kg|lb)?\s*(?<each>each)?\s*(?:(?:x|for)\s*)?(?<reps>\d+))|(?:(?<same>same)\s*x\s*(?<sameReps>\d+))/gi;
 
+export function hasSetNotation(input: string): boolean {
+  return input.match(setPattern) !== null;
+}
+
 export function parseSetMessage(input: string, options: ParseSetOptions): ParsedSet[] {
   const sets: ParsedSet[] = [];
   const lower = input.toLowerCase();

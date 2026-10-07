@@ -1,5 +1,6 @@
 import { AuthService, InboundMessageProcessor, LinkService, ProfileService, RoutineService, WorkoutService } from "../../../packages/domain/src/index.js";
 import { InMemoryStore, PostgresVerticalSliceApp } from "../../../packages/persistence/src/index.js";
+import { createStructuredOutputClient, StaticPromptRegistry, StructuredIntentInterpreter } from "../../../packages/ai/src/index.js";
 
 export const inMemoryStore = new InMemoryStore();
 export const authService = new AuthService(inMemoryStore);
@@ -16,6 +17,9 @@ export function productionApp(): PostgresVerticalSliceApp {
   if (!connectionString) {
     throw new Error("DATABASE_URL is required for the production PostgreSQL persistence path");
   }
-  postgresApp ??= new PostgresVerticalSliceApp({ connectionString });
+  postgresApp ??= new PostgresVerticalSliceApp({
+    connectionString,
+    interpreter: new StructuredIntentInterpreter(createStructuredOutputClient(), new StaticPromptRegistry())
+  });
   return postgresApp;
 }

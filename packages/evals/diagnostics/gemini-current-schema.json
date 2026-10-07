@@ -1,0 +1,1258 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": [
+        "workout-action.v1"
+      ]
+    },
+    "action": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "START_WORKOUT"
+              ]
+            },
+            "routineRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sessionRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "routineRef",
+            "sessionRef"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RESUME_WORKOUT"
+              ]
+            },
+            "workoutRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "workoutRef"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "LOG_SET"
+              ]
+            },
+            "set": {
+              "type": "object",
+              "properties": {
+                "exerciseRef": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "loadValue": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "weightUnit": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "KG",
+                        "LB"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "loadSemantics": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "UNSPECIFIED_DEFAULT",
+                        "PER_HAND_PER_SIDE",
+                        "TOTAL_LOAD",
+                        "MACHINE_STACK"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reps": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "note": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "failedAttemptReps": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ordinalRef": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "exerciseRef",
+                "loadValue",
+                "weightUnit",
+                "loadSemantics",
+                "reps",
+                "note",
+                "failedAttemptReps",
+                "ordinalRef"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "set"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "LOG_MULTIPLE_SETS"
+              ]
+            },
+            "sets": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "exerciseRef": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "loadValue": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "weightUnit": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "KG",
+                          "LB"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "loadSemantics": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "UNSPECIFIED_DEFAULT",
+                          "PER_HAND_PER_SIDE",
+                          "TOTAL_LOAD",
+                          "MACHINE_STACK"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "reps": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "failedAttemptReps": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ordinalRef": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "exerciseRef",
+                  "loadValue",
+                  "weightUnit",
+                  "loadSemantics",
+                  "reps",
+                  "note",
+                  "failedAttemptReps",
+                  "ordinalRef"
+                ]
+              }
+            }
+          },
+          "required": [
+            "type",
+            "sets"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "CORRECT_SET"
+              ]
+            },
+            "targetRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "replacement": {
+              "type": "object",
+              "properties": {
+                "exerciseRef": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "loadValue": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "weightUnit": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "KG",
+                        "LB"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "loadSemantics": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "UNSPECIFIED_DEFAULT",
+                        "PER_HAND_PER_SIDE",
+                        "TOTAL_LOAD",
+                        "MACHINE_STACK"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reps": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "note": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "failedAttemptReps": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ordinalRef": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "exerciseRef",
+                "loadValue",
+                "weightUnit",
+                "loadSemantics",
+                "reps",
+                "note",
+                "failedAttemptReps",
+                "ordinalRef"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "targetRef",
+            "replacement"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "DELETE_SET"
+              ]
+            },
+            "targetRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "targetRef"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "CHANGE_ACTIVE_EXERCISE"
+              ]
+            },
+            "exerciseRef": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "exerciseRef"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "SKIP_EXERCISE"
+              ]
+            },
+            "exerciseRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "SESSION_ONLY",
+                "PERMANENT_ROUTINE",
+                "AMBIGUOUS"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "exerciseRef",
+            "scope"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "REPLACE_EXERCISE"
+              ]
+            },
+            "fromExerciseRef": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "toExerciseRef": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "SESSION_ONLY",
+                "PERMANENT_ROUTINE",
+                "AMBIGUOUS"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "fromExerciseRef",
+            "toExerciseRef",
+            "scope"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ADD_EXERCISE"
+              ]
+            },
+            "exerciseRef": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "SESSION_ONLY",
+                "PERMANENT_ROUTINE",
+                "AMBIGUOUS"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "exerciseRef",
+            "scope"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "CREATE_CUSTOM_EXERCISE"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "aliases": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "classificationHint": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "name",
+            "aliases",
+            "classificationHint"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "MAP_EXERCISE_ALIAS"
+              ]
+            },
+            "alias": {
+              "type": "string"
+            },
+            "exerciseRef": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "alias",
+            "exerciseRef"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "CHANGE_SESSION"
+              ]
+            },
+            "sessionRef": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "SESSION_ONLY",
+                "PERMANENT_ROUTINE",
+                "AMBIGUOUS"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "sessionRef",
+            "scope"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "UPDATE_ROUTINE_REQUEST"
+              ]
+            },
+            "requestedChange": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "ADD_EXERCISE"
+                      ]
+                    },
+                    "sessionRef": {
+                      "type": "string"
+                    },
+                    "exerciseRef": {
+                      "type": "string"
+                    },
+                    "orderRef": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "sessionRef",
+                    "exerciseRef",
+                    "orderRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "REMOVE_EXERCISE"
+                      ]
+                    },
+                    "sessionRef": {
+                      "type": "string"
+                    },
+                    "exerciseRef": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "sessionRef",
+                    "exerciseRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "REPLACE_EXERCISE"
+                      ]
+                    },
+                    "sessionRef": {
+                      "type": "string"
+                    },
+                    "fromExerciseRef": {
+                      "type": "string"
+                    },
+                    "toExerciseRef": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "sessionRef",
+                    "fromExerciseRef",
+                    "toExerciseRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "REORDER_EXERCISE"
+                      ]
+                    },
+                    "sessionRef": {
+                      "type": "string"
+                    },
+                    "exerciseRef": {
+                      "type": "string"
+                    },
+                    "newOrderRef": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "sessionRef",
+                    "exerciseRef",
+                    "newOrderRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "ADD_SESSION"
+                      ]
+                    },
+                    "routineRef": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sessionName": {
+                      "type": "string"
+                    },
+                    "orderRef": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "routineRef",
+                    "sessionName",
+                    "orderRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "REMOVE_SESSION"
+                      ]
+                    },
+                    "sessionRef": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "sessionRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "REPLACE_SESSION"
+                      ]
+                    },
+                    "fromSessionRef": {
+                      "type": "string"
+                    },
+                    "toSessionRef": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "fromSessionRef",
+                    "toSessionRef"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "REORDER_SESSION"
+                      ]
+                    },
+                    "sessionRef": {
+                      "type": "string"
+                    },
+                    "newOrderRef": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "sessionRef",
+                    "newOrderRef"
+                  ]
+                }
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "PERMANENT_ROUTINE",
+                "AMBIGUOUS"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "requestedChange",
+            "scope"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "FINISH_WORKOUT"
+              ]
+            },
+            "requestedCompletion": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "COMPLETE",
+                    "INCOMPLETE",
+                    "DISCARD",
+                    "CONTINUE"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "requestedCompletion"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "QUERY_HISTORY"
+              ]
+            },
+            "queryKind": {
+              "type": "string",
+              "enum": [
+                "LAST_SESSION",
+                "LAST_EXERCISE",
+                "BEST_SET"
+              ]
+            },
+            "subject": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "EXERCISE"
+                          ]
+                        },
+                        "exerciseRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "exerciseRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "MUSCLE"
+                          ]
+                        },
+                        "muscleRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "muscleRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "WORKOUT_SESSION"
+                          ]
+                        },
+                        "workoutRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "workoutRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ROUTINE_SESSION"
+                          ]
+                        },
+                        "sessionRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "sessionRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ROUTINE"
+                          ]
+                        },
+                        "routineRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "routineRef"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "queryKind",
+            "subject"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "QUERY_ANALYTICS"
+              ]
+            },
+            "queryKind": {
+              "type": "string",
+              "enum": [
+                "WEEKLY_PRIMARY_MUSCLE_SETS",
+                "LAST_TRAINED",
+                "MONTHLY_WORKOUT_COUNT"
+              ]
+            },
+            "subject": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "EXERCISE"
+                          ]
+                        },
+                        "exerciseRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "exerciseRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "MUSCLE"
+                          ]
+                        },
+                        "muscleRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "muscleRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "WORKOUT_SESSION"
+                          ]
+                        },
+                        "workoutRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "workoutRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ROUTINE_SESSION"
+                          ]
+                        },
+                        "sessionRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "sessionRef"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ROUTINE"
+                          ]
+                        },
+                        "routineRef": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "routineRef"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "queryKind",
+            "subject"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "UNKNOWN"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "reason"
+          ]
+        }
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "requiresClarification": {
+      "type": "boolean"
+    },
+    "clarificationQuestion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rationaleCodes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbiddenDirectMutation": {
+      "type": "boolean",
+      "description": "Must always equal true. This constraint is validated locally."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "action",
+    "confidence",
+    "requiresClarification",
+    "clarificationQuestion",
+    "rationaleCodes",
+    "forbiddenDirectMutation"
+  ]
+}

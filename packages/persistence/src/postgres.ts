@@ -3,10 +3,13 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { Pool, type PoolClient } from "pg";
 import type { LoadSemantics, NormalizedWhatsAppMessage, WeightUnit } from "../../contracts/src/index.js";
 import { DomainError, sha256 } from "./store.js";
-import { parseSetMessage } from "../../domain/src/parser/set-parser.js";
+import { hasSetNotation, parseSetMessage } from "../../domain/src/parser/set-parser.js";
+import type { IntentInterpreter } from "../../ai/src/interfaces.js";
+import { guardProposedAction } from "../../ai/src/action-boundary.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
+  interpreter?: IntentInterpreter;
 };
 
 export type PgHistoryEntry = {
@@ -22,9 +25,11 @@ export type PgHistoryEntry = {
 
 export class PostgresVerticalSliceApp {
   readonly pool: Pool;
+  private readonly interpreter: IntentInterpreter | undefined;
 
   constructor(config: PostgresSliceConfig) {
     this.pool = new Pool({ connectionString: config.connectionString });
+    this.interpreter = config.interpreter;
   }
 
   async close(): Promise<void> {
@@ -330,7 +335,30 @@ export class PostgresVerticalSliceApp {
       [userId, commandKey]
     );
     if (existing.rows[0]) return "Logged set";
-    await this.logSets(client, userId, inboundId, commandKey, text);
+    try {
+      await this.logSets(client, userId, inboundId, commandKey, text);
+    } catch (error) {
+      if (!(error instanceof DomainError) || error.code !== "NO_SET_NOTATION" || !this.interpreter) throw error;
+      const activeContext = await client.query("select id from workout_sessions where user_id = $1 and status = 'ACTIVE'", [userId]);
+      const envelope = await this.interpreter.interpret({
+        userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0 }
+      });
+      const result = await guardProposedAction(envelope, {
+        authorize: async () => {
+          const user = await client.query("select id from users where id = $1 and deleted_at is null", [userId]);
+          if (!user.rows[0]) throw new DomainError("User unavailable", "UNAUTHORIZED");
+        },
+        validateDomain: async () => {
+          if (envelope.action.type === "UNKNOWN" || envelope.action.type === "QUERY_HISTORY" || envelope.action.type === "QUERY_ANALYTICS") return;
+          const active = await client.query("select id from workout_sessions where user_id = $1 and status = 'ACTIVE'", [userId]);
+          if (!active.rows[0]) throw new DomainError("No active workout", "NO_ACTIVE_WORKOUT");
+        },
+        executeIdempotently: async () => "This request is not supported yet."
+      });
+      return result.status === "CLARIFICATION_REQUIRED" ? result.question
+        : result.status === "CONFIRMATION_REQUIRED" ? "This action requires confirmation and is not supported yet."
+        : result.body;
+    }
     return "Logged set";
   }
 
@@ -394,6 +422,7 @@ export class PostgresVerticalSliceApp {
   }
 
   private async logSets(client: PoolClient, userId: string, inboundId: string, commandKey: string, text: string): Promise<void> {
+    if (!hasSetNotation(text)) throw new DomainError("No deterministic set notation", "NO_SET_NOTATION");
     const workout = await client.query<{ id: string; active_session_exercise_id: string }>(
       `select id, active_session_exercise_id from workout_sessions where user_id = $1 and status = 'ACTIVE'`,
       [userId]

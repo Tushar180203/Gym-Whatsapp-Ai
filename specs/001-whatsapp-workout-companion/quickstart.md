@@ -73,6 +73,22 @@ Expected outcome:
 
 ## Ambiguous AI Interpretation Validation
 
+AI infrastructure regression gate: run `npx -y node@22 --run eval` before accepting
+prompt, schema, model, or interpreter changes. This runs the offline mock-provider
+fixtures and boundary tests with a pass/fail report; it measures contract behavior,
+not live model accuracy. Normal tests require no API key or network.
+
+For an opt-in Gemini adapter smoke test, configure `AI_PROVIDER=gemini`,
+`GEMINI_API_KEY`, and `AI_MODEL=gemini-3.5-flash-lite`, then run
+`npx -y node@22 --run eval:real-provider`. The default model is `gemini-3.5-flash-lite`;
+`AI_MODEL` overrides it. Use an unbilled free-tier project and synthetic test data;
+quotas and data-handling terms are documented in research.md. OpenAI is optional
+future work, not a required key or paid fallback. The smoke test validates extracted fields, and failure
+fails the command. Live model quality remains unverified until this is run.
+
+The runtime fallback currently returns clarification or unsupported responses.
+Later-story action dispatch and pending-confirmation execution remain deferred.
+
 Inputs that may use AI:
 
 - `bench is busy let's do shoulder press first`

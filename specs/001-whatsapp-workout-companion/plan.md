@@ -14,7 +14,7 @@ The architecture centers on deterministic domain commands. WhatsApp and web inpu
 
 **Language/Version**: TypeScript 5.x on Node.js LTS 22.x. Strict TypeScript across apps and packages.
 
-**Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Drizzle for typed relational access, Zod-style local contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, OpenAI Responses API or equivalent provider behind an AI adapter with strict structured output support, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
+**Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Drizzle for typed relational access, Zod-style local contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, Gemini Developer API free tier behind a provider-independent structured JSON output adapter, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
 
 **Storage**: PostgreSQL. Relational constraints are required for user ownership, one active workout per user, historical session snapshots, routine sequence cursors, idempotency records, corrections, aliases, analytics queries, exports, and deletion requests. MVP PRs are derived from valid set records rather than stored in a cache/table.
 
@@ -269,7 +269,7 @@ Keep provider behind:
 - `PromptRegistry`
 - `AiEvaluationRunner`
 
-Recommend an AI provider/model with strict structured output support, low-latency small-model options, stable SDK support for TypeScript, cost controls, and regression-evaluation ergonomics. OpenAI Responses API with strict structured outputs is the initial recommendation because it supports JSON-schema-shaped outputs and TypeScript SDK workflows, but domain code must only depend on local action schemas.
+Use Gemini Developer API free tier as the initial MVP structured-output provider behind the provider-independent `StructuredOutputClient` adapter. Configure `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, and `AI_MODEL=gemini-3.5-flash-lite` (the default). Use an unbilled free-tier project; quotas and eligibility depend on the account. The REST adapter requests JSON-schema-shaped output, normalizes provider failures into local error types, and leaves final validation to the existing Zod action schemas. Normal tests use the mock client; live Gemini smoke/evals are opt-in. No automatic paid-provider fallback is allowed. OpenAI remains an optional future provider, with its existing adapter retained but not selected by the MVP runtime factory. Domain code must only depend on local action schemas.
 
 Prompts, schemas, fixtures, and evaluation cases are version-controlled. AI output is validated with local schemas before domain validation.
 
