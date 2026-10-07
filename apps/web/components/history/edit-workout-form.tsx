@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation.js";
 import { Save, RotateCcw } from "lucide-react";
 import type { EditableHistory } from "../../../../packages/persistence/src/postgres.js";
 export function EditWorkoutForm({ initialHistory }: { initialHistory: EditableHistory }) {
+  const router = useRouter();
   const [history, setHistory] = useState(initialHistory);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
@@ -16,7 +18,7 @@ export function EditWorkoutForm({ initialHistory }: { initialHistory: EditableHi
     try {
       const response = await fetch(`/api/workouts/${history.workout.id}/sets/${set.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replacement: { loadValue: set.loadValue, weightUnit: set.weightUnit, loadSemantics: set.loadSemantics, reps: set.reps }, idempotencyKey, expectedVersion: history.workout.version }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error);
-      setHistory(current => ({ ...result.history, sets: result.history.sets.map((saved: EditableHistory["sets"][number]) => saved.id === set.id ? saved : current.sets.find(draft => draft.id === saved.id) ?? saved) })); setMessage("Set saved."); setKeys(current => { const copy = { ...current }; delete copy[set.id]; return copy; });
+      setHistory(current => ({ ...result.history, sets: result.history.sets.map((saved: EditableHistory["sets"][number]) => saved.id === set.id ? saved : current.sets.find(draft => draft.id === saved.id) ?? saved) })); setMessage("Set saved."); setKeys(current => { const copy = { ...current }; delete copy[set.id]; return copy; }); router.refresh();
     } catch (error) { setError(error instanceof Error ? error.message : "Could not save set."); } finally { setSaving(null); }
   }
   function update(id: string, values: Partial<EditableHistory["sets"][number]>) {

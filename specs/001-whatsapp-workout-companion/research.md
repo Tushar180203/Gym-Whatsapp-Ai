@@ -183,6 +183,13 @@ rejected locally. Sanitized evidence and reproducible commands are in
 
 ## Open Technical Questions
 
+### US6 Implementation Decisions (2026-10-07)
+
+- Analytics remain on-demand deterministic queries, not persisted aggregates. Read-only repeatable-read PostgreSQL snapshots keep each web result internally consistent; inbound queries run inside the existing user-serialized messaging transaction.
+- Periods use UTC Monday-start weeks and calendar months because the current profile has no timezone preference. Training dates use session start time (creation time for legacy missing starts), not set correction timestamps. Completed counts/frequency exclude incomplete, active and discarded sessions. Recorded sets from completed/incomplete sessions contribute progression and confirmed primary-muscle counts.
+- `0004_us6.sql` supplies the approved classification dependency with user-private overrides for accessible exercise identities, including shared catalog identities. Classification is explicit manual input through the already contracted PATCH route; no automatic muscle inference, secondary/fractional volume, coaching or classification agent was introduced.
+- Bounded history answers reuse US5 exact identity/confirmed alias and compatible preferred-unit/load-semantic services. Gemini only proposes query kind/subject through the existing locally validated envelope. Prompt v4 prohibits factual numeric answers; deterministic question notation and coaching limitations bypass the provider.
+
 - Choose Prisma or Drizzle after implementation preferences are known.
 - Choose the auth library/provider after deployment and account requirements are known.
 - Choose hosting and secret management before production.

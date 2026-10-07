@@ -11,6 +11,7 @@ import { WorkoutService } from "../workouts/workout-service.js";
 import { parseUs4Message, type Us4Action } from "../parser/us4-parser.js";
 import { parseCompletionIntent } from "../workouts/completion-policy.js";
 import { isResumeIntent } from "../workouts/resume-workout-command.js";
+export { isCoachingQuestion, parseHistoryQuestion } from "./history-query-parser.js";
 
 export type Us4MessageHandlers = {
   resolveConfirmation(text: string): Promise<string | undefined>;

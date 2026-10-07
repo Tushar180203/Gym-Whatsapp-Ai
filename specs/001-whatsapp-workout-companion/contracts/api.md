@@ -43,6 +43,7 @@ Rules:
 - Custom exercise identity remains stable across rename and alias changes.
 - Merges require explicit confirmation.
 - Confirmed primary-muscle classification controls MVP muscle analytics.
+- Classification PATCH accepts `{ classifications: [{ muscleGroup, role, status }] }` (up to 20 unique muscle/role rows). Roles are `PRIMARY`/`SECONDARY`; statuses are `CONFIRMED`/`UNCERTAIN`/`UNCLASSIFIED`. This replaces only the authenticated user's classifications for an accessible exact identity; foreign custom identity IDs return not found. Manual confirmation, not an AI hint, controls inclusion.
 
 ## Workout Sessions And Sets
 
@@ -75,6 +76,9 @@ Rules:
 
 - Analytics are deterministic and derived from persisted data.
 - Primary-muscle sets only for MVP muscle counts.
+- Responses use UTC Monday-start weeks/calendar months. Frequency, completed count and monthly count include only completed workouts; muscle sets/progression/last-trained include current recorded sets in completed/incomplete workouts, excluding deleted sets and discarded/active sessions.
+- Overview returns periods, counts, weekly frequency, muscle counts/last-trained, exact raw progression and accessible identities/user-private classifications. Muscles returns the same period metadata and muscle rows. Exercise detail returns the exact accessible identity, raw progression and deterministic compatible US5 best-set text. Supported questions returns the six bounded query kinds and UTC calendar; it does not generate factual answers.
+- Queries require a valid owner session, re-check deleted-user blocking and return private no-store responses. No AI-generated numeric values, cached PRs, estimated 1RM or coaching prescriptions are returned.
 
 ## Export And Deletion
 

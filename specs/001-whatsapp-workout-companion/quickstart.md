@@ -200,6 +200,8 @@ Expected outcome:
 - Corrected classification changes future analytics.
 - No values are invented or model-generated.
 
+US6 executable validation: `TEST_DATABASE_URL=<disposable-postgres-url> npm run test:postgres` covers restart, current corrected/deleted records, classification changes and ownership. `TEST_DATABASE_URL=<disposable-postgres-url> npm run test:us6:web` covers desktop/mobile history and Overview/Muscles/Exercises views, manual classification, empty/error/auth states. Apply `0004_us6.sql` after `0003_us5.sql` on existing databases first. Periods are explicitly UTC (Monday weeks/calendar months); counts/frequency include completed sessions only, while valid recorded sets in completed/incomplete sessions contribute muscle sets/progression/last-trained. Classifications are user-private confirmed PRIMARY values, never guessed. Supported WhatsApp examples above use deterministic query routing; differently worded queries use validated Gemini intent only. Offline eval fixtures test boundaries, not live-model accuracy.
+
 ## Webhook Security Validation
 
 Scenarios:

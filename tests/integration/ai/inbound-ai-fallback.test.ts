@@ -57,9 +57,16 @@ describe("normalized inbound production AI fallback", () => {
   });
 
   it("interprets unsupported notation without mutating workout state", async () => {
-    const { provider, query, error } = await runtimeCase("what should I do now?", unknown);
+    const { provider, query, error } = await runtimeCase("do something unusual", unknown);
     expect(error).toBeUndefined();
     expect(provider.requests).toHaveLength(1);
+    expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(false);
+    expect(query.mock.calls.some(([sql]) => sql.includes("insert into command_executions"))).toBe(false);
+  });
+  it("declines coaching deterministically without AI or mutation", async () => {
+    const { provider, query, error, result } = await runtimeCase("what should I bench today?", unknown);
+    expect(error).toBeUndefined(); expect(provider.requests).toHaveLength(0);
+    expect(result?.body).toContain("cannot choose weights");
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(false);
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into command_executions"))).toBe(false);
   });

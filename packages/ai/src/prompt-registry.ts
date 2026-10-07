@@ -2,7 +2,7 @@ import { workoutActionSchemaVersion, ProposedActionEnvelopeSchema } from "../../
 import { z } from "zod";
 import type { PromptRegistry } from "./interfaces.js";
 
-export const intentPromptVersion = "intent-interpreter.prompt.v3" as const;
+export const intentPromptVersion = "intent-interpreter.prompt.v4" as const;
 export const defaultIntentModel = "gemini-3.5-flash-lite" as const;
 
 export class StaticPromptRegistry implements PromptRegistry {
@@ -30,7 +30,12 @@ export class StaticPromptRegistry implements PromptRegistry {
         "Use targetRef exercise:<exact name>:set:<ordinal>, exercise:<exact name>:last, or completed:exercise:<exact name>:set:<ordinal> when specified.",
         "Unclear correction targets require clarification. Similar exercises are separate identities, never automatically merged.",
         "Today/this session/do X first means SESSION_ONLY. From now on/permanently means PERMANENT_ROUTINE.",
-        "Ambiguous replacements require clarification: Today only or update your routine?"
+        "Ambiguous replacements require clarification: Today only or update your routine?",
+        "History questions use QUERY_HISTORY with LAST_SESSION, LAST_EXERCISE, or BEST_SET and an explicit typed subject.",
+        "Analytics questions use QUERY_ANALYTICS: WEEKLY_PRIMARY_MUSCLE_SETS or LAST_TRAINED with a typed subject, MONTHLY_WORKOUT_COUNT without a subject.",
+        "Preserve the user's exercise reference/confirmed alias; never substitute a similar exercise. Ambiguous references require clarification.",
+        "Return intent/subject only. Never generate authoritative numeric history, PRs, duration, analytics, or a factual answer.",
+        "Weight selection, progression, deload and training-volume advice is unsupported: return UNKNOWN. Do not prescribe a training decision."
       ].join("\n"),
       responseSchema: proposedActionJsonSchema
     };

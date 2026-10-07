@@ -12,6 +12,11 @@ import { parseCompletionIntent, type CompletionIntent } from "../../domain/src/w
 import { isResumeIntent } from "../../domain/src/workouts/resume-workout-command.js";
 import { WorkoutHistoryQueries } from "./workout-history-queries.js";
 import { WorkoutLifecycle } from "./workout-lifecycle.js";
+import { AnalyticsQueries } from "./analytics-queries.js";
+import { workoutAnalytics } from "../../analytics/src/workout-analytics-service.js";
+import { answerHistoryQuestion, coachingBoundary, type HistoryAction, type HistorySnapshot } from "../../analytics/src/history-question-service.js";
+import { ProposedActionSchema } from "../../contracts/src/ai/actions.js";
+import { isCoachingQuestion, parseHistoryQuestion } from "../../domain/src/messaging/history-query-parser.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
@@ -19,7 +24,7 @@ export type PostgresSliceConfig = {
 };
 
 export type PgHistoryEntry = {
-  workout: { id: string; status: string; name: string; durationSeconds: number | null };
+  workout: { id: string; status: string; name: string; durationSeconds: number | null; trainedAt: Date };
   sets: Array<{
     loadValue: number;
     weightUnit: WeightUnit;
@@ -55,7 +60,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -211,8 +216,8 @@ export class PostgresVerticalSliceApp {
   }
 
   async history(userId: string): Promise<PgHistoryEntry[]> {
-    const workouts = await this.pool.query<{ id: string; status: string; name: string; durationSeconds: number | null }>(
-      `select id, status, name, duration_seconds as "durationSeconds" from workout_sessions where user_id = $1 and status in ('COMPLETED', 'INCOMPLETE') order by created_at`,
+    const workouts = await this.pool.query<{ id: string; status: string; name: string; durationSeconds: number | null; trainedAt: Date }>(
+      `select id, status, name, duration_seconds as "durationSeconds",coalesce(started_at,created_at) as "trainedAt" from workout_sessions where user_id = $1 and status in ('COMPLETED', 'INCOMPLETE') order by created_at`,
       [userId]
     );
     const entries: PgHistoryEntry[] = [];
@@ -283,6 +288,45 @@ export class PostgresVerticalSliceApp {
 
   async previousPerformance(userId: string, exerciseRef: string, weightUnit: WeightUnit, loadSemantics: LoadSemantics) {
     return new WorkoutHistoryQueries(this.pool).previous(userId, exerciseRef, weightUnit, loadSemantics);
+  }
+
+  private async analyticsSnapshot(sessionToken: string, now = new Date()): Promise<HistorySnapshot> {
+    const userId = await this.currentUser(sessionToken), client = await this.pool.connect();
+    try {
+      await client.query("begin isolation level repeatable read read only");
+      const snapshot = await new AnalyticsQueries(client, userId).snapshot(now);
+      await client.query("commit"); return snapshot;
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
+  }
+
+  async analytics(sessionToken: string, now = new Date()) {
+    const snapshot = await this.analyticsSnapshot(sessionToken, now);
+    return { ...workoutAnalytics(snapshot), identities: snapshot.identities, classifications: snapshot.classifications };
+  }
+
+  async exerciseAnalytics(sessionToken: string, exerciseId: string) {
+    const snapshot = await this.analyticsSnapshot(sessionToken);
+    const identity = snapshot.identities.find(row => row.id === exerciseId);
+    if (!identity) throw new DomainError("Exercise not found", "NOT_FOUND");
+    return { identity, progression: workoutAnalytics(snapshot).progression.filter(row => row.exerciseIdentityId === exerciseId),
+      best: answerHistoryQuestion(snapshot, { type: "QUERY_HISTORY", queryKind: "BEST_SET", subject: { kind: "EXERCISE", exerciseRef: exerciseId } }) };
+  }
+
+  async answerQuestion(sessionToken: string, value: unknown, now = new Date()): Promise<string> {
+    const snapshot = await this.analyticsSnapshot(sessionToken, now);
+    const action = ProposedActionSchema.parse(value);
+    if (!["QUERY_HISTORY", "QUERY_ANALYTICS", "UNKNOWN"].includes(action.type)) throw new DomainError("Unsupported question", "INVALID_INPUT");
+    return answerHistoryQuestion(snapshot, action as HistoryAction);
+  }
+
+  async classifyExercise(sessionToken: string, exerciseId: string, input: unknown): Promise<void> {
+    const userId = await this.currentUser(sessionToken), client = await this.pool.connect();
+    try {
+      await client.query("begin"); await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+      if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      await new AnalyticsQueries(client, userId).classify(exerciseId, input);
+      await client.query("commit");
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
   }
 
   async personalRecords(userId: string, exerciseRef: string, weightUnit: WeightUnit, loadSemantics: LoadSemantics) {
@@ -418,6 +462,9 @@ export class PostgresVerticalSliceApp {
     if (isResumeIntent(text)) return lifecycle.resume();
     const completion = parseCompletionIntent(text);
     if (completion) return lifecycle.finish(`${inboundId}:finish`, completion);
+    if (isCoachingQuestion(text)) return coachingBoundary;
+    const question = parseHistoryQuestion(text);
+    if (question) return answerHistoryQuestion(await new AnalyticsQueries(client, userId).snapshot(), question);
     const commandKey = `${inboundId}:log`;
     const existing = await client.query(
       `select id from command_executions where user_id = $1 and idempotency_key = $2 and status = 'COMPLETED'`,
@@ -435,7 +482,10 @@ export class PostgresVerticalSliceApp {
         userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0, ...(activeContext.rows[0]?.display_name ? { activeExercise: activeContext.rows[0].display_name } : {}), knownExerciseRefs: known.rows.map(row => row.display_name), confirmedAliases: aliases.rows.map(row => ({ alias: row.alias_text, exerciseRef: row.display_name })) }
       });
       const validated = parseProposedActionEnvelope(envelope);
+      if (validated.requiresClarification && (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS")) return "Which exact exercise, workout session or muscle do you mean?";
       if (validated.requiresClarification) return validated.clarificationQuestion ?? "Please clarify the request.";
+      if (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS") return answerHistoryQuestion(await new AnalyticsQueries(client, userId).snapshot(), validated.action);
+      if (validated.action.type === "UNKNOWN") return coachingBoundary;
       if (validated.action.type === "RESUME_WORKOUT") return lifecycle.resume(validated.action.workoutRef);
       if (validated.action.type === "FINISH_WORKOUT") {
         // A model-supplied completion choice is not evidence of explicit user consent.
