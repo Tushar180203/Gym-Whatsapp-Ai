@@ -378,6 +378,7 @@ export class Us4Commands {
       } else throw new Error("Unsupported action");
       await this.audit(commandId, confirmationId, plan.kind, "WORKOUT_SESSION", a.workoutId, before, await this.rows("select * from session_exercises where workout_session_id=$1 order by order_index", [a.workoutId]), a.workoutId);
     }
+    if (a.workoutId) await this.db.query("update session_exercises se set exercise_name_snapshot=e.display_name from exercise_identities e where se.exercise_identity_id=e.id and se.workout_session_id=$1 and se.exercise_name_snapshot is null", [a.workoutId]);
     for (const key of Object.keys(plan.versions)) {
       const split = key.indexOf(":"), table = key.slice(0, split);
       await this.db.query(`update ${table} set version=version+1 where id=$1`, [key.slice(split + 1)]);

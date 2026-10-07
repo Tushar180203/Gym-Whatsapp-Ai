@@ -7,7 +7,11 @@ import { hasSetNotation, parseSetMessage } from "../../domain/src/parser/set-par
 import type { IntentInterpreter } from "../../ai/src/interfaces.js";
 import { Us4Commands } from "./us4.js";
 import { handleDeterministicUs4Message } from "../../domain/src/messaging/inbound-message-processor.js";
-import { SetInputSchema, type SetInput } from "../../contracts/src/ai/actions.js";
+import { SetInputSchema, parseProposedActionEnvelope, type SetInput } from "../../contracts/src/ai/actions.js";
+import { parseCompletionIntent, type CompletionIntent } from "../../domain/src/workouts/completion-policy.js";
+import { isResumeIntent } from "../../domain/src/workouts/resume-workout-command.js";
+import { WorkoutHistoryQueries } from "./workout-history-queries.js";
+import { WorkoutLifecycle } from "./workout-lifecycle.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
@@ -15,7 +19,7 @@ export type PostgresSliceConfig = {
 };
 
 export type PgHistoryEntry = {
-  workout: { id: string; status: string; name: string };
+  workout: { id: string; status: string; name: string; durationSeconds: number | null };
   sets: Array<{
     loadValue: number;
     weightUnit: WeightUnit;
@@ -27,6 +31,8 @@ export type PgHistoryEntry = {
 export type EditableHistory = {
   workout: { id: string; name: string; status: string; version: number };
   sets: Array<{ id: string; exerciseName: string; setIndex: number; loadValue: number; weightUnit: WeightUnit; loadSemantics: LoadSemantics; reps: number }>;
+  exercises: Array<{ id: string; exerciseIdentityId: string; name: string; status: string; orderIndex: number; plannedSets: number | null; repTargetMin: number | null; repTargetMax: number | null }>;
+  summary: string;
 };
 
 export class PostgresVerticalSliceApp {
@@ -49,7 +55,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -205,8 +211,8 @@ export class PostgresVerticalSliceApp {
   }
 
   async history(userId: string): Promise<PgHistoryEntry[]> {
-    const workouts = await this.pool.query<{ id: string; status: string; name: string }>(
-      `select id, status, name from workout_sessions where user_id = $1 and status in ('COMPLETED', 'INCOMPLETE') order by created_at`,
+    const workouts = await this.pool.query<{ id: string; status: string; name: string; durationSeconds: number | null }>(
+      `select id, status, name, duration_seconds as "durationSeconds" from workout_sessions where user_id = $1 and status in ('COMPLETED', 'INCOMPLETE') order by created_at`,
       [userId]
     );
     const entries: PgHistoryEntry[] = [];
@@ -240,8 +246,13 @@ export class PostgresVerticalSliceApp {
     const userId = await this.currentUser(sessionToken);
     const workout = (await this.pool.query("select id,name,status,version from workout_sessions where id=$1 and user_id=$2 and status in ('COMPLETED','INCOMPLETE')", [workoutId, userId])).rows[0];
     if (!workout) throw new DomainError("Workout not found", "NOT_FOUND");
-    const sets = await this.pool.query("select s.id,e.display_name,s.set_index,s.load_value,s.weight_unit,s.load_semantics,s.reps from workout_sets s join exercise_identities e on e.id=s.exercise_identity_id where s.workout_session_id=$1 and s.user_id=$2 and s.status='RECORDED' order by s.created_at,s.set_index", [workoutId, userId]);
-    return { workout, sets: sets.rows.map(row => ({ id: row.id, exerciseName: row.display_name, setIndex: row.set_index, loadValue: Number(row.load_value), weightUnit: row.weight_unit, loadSemantics: row.load_semantics, reps: row.reps })) };
+    const sets = await this.pool.query("select s.id,coalesce(se.exercise_name_snapshot,e.display_name) as display_name,s.set_index,s.load_value,s.weight_unit,s.load_semantics,s.reps from workout_sets s join session_exercises se on se.id=s.session_exercise_id join exercise_identities e on e.id=s.exercise_identity_id where s.workout_session_id=$1 and s.user_id=$2 and s.status='RECORDED' order by s.created_at,s.set_index", [workoutId, userId]);
+    const exercises = await this.pool.query("select se.id,se.exercise_identity_id as \"exerciseIdentityId\",coalesce(se.exercise_name_snapshot,e.display_name) as name,se.status,se.order_index as \"orderIndex\",se.planned_set_count_snapshot as \"plannedSets\",se.rep_target_min_snapshot as \"repTargetMin\",se.rep_target_max_snapshot as \"repTargetMax\" from session_exercises se join exercise_identities e on e.id=se.exercise_identity_id where se.workout_session_id=$1 order by se.order_index", [workoutId]);
+    const client = await this.pool.connect();
+    try {
+      const summary = await new WorkoutLifecycle(client, userId).summary(workoutId);
+      return { workout, exercises: exercises.rows, summary, sets: sets.rows.map(row => ({ id: row.id, exerciseName: row.display_name, setIndex: row.set_index, loadValue: Number(row.load_value), weightUnit: row.weight_unit, loadSemantics: row.load_semantics, reps: row.reps })) };
+    } finally { client.release(); }
   }
 
   async editHistorySet(input: { sessionToken: string; workoutId: string; setId: string; replacement: Partial<SetInput>; idempotencyKey: string; expectedVersion: number }): Promise<string> {
@@ -268,6 +279,29 @@ export class PostgresVerticalSliceApp {
       [userId]
     );
     return result.rows[0] ?? null;
+  }
+
+  async previousPerformance(userId: string, exerciseRef: string, weightUnit: WeightUnit, loadSemantics: LoadSemantics) {
+    return new WorkoutHistoryQueries(this.pool).previous(userId, exerciseRef, weightUnit, loadSemantics);
+  }
+
+  async personalRecords(userId: string, exerciseRef: string, weightUnit: WeightUnit, loadSemantics: LoadSemantics) {
+    return new WorkoutHistoryQueries(this.pool).records(userId, exerciseRef, weightUnit, loadSemantics);
+  }
+
+  async workoutLifecycle(input: { sessionToken: string; workoutId: string; intent: CompletionIntent | "REQUEST" | "RESUME"; idempotencyKey: string }) {
+    const userId = await this.currentUser(input.sessionToken);
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+      if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      if (!(await client.query("select id from workout_sessions where id=$1 and user_id=$2", [input.workoutId, userId])).rows.length) throw new DomainError("Workout not found", "NOT_FOUND");
+      const lifecycle = new WorkoutLifecycle(client, userId, "WEB");
+      const body = input.intent === "RESUME" ? await lifecycle.resume(input.workoutId)
+        : await lifecycle.finish(`web:${input.workoutId}:finish:${input.idempotencyKey}`, input.intent, input.workoutId);
+      await client.query("commit"); return { body };
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
   }
 
   async startNextWorkout(userId: string): Promise<{ id: string; status: string; name: string } | null> {
@@ -369,15 +403,21 @@ export class PostgresVerticalSliceApp {
     if (lower.startsWith("link ")) return "WhatsApp linked";
     const us4 = new Us4Commands(client, userId, inboundId);
     const us4Result = await handleDeterministicUs4Message(text, `${inboundId}:us4`, us4);
-    if (us4Result !== undefined) return us4Result;
+    const lifecycle = new WorkoutLifecycle(client, userId);
+    const withContext = async (body: string) => {
+      const context = /^(Changed active exercise|Change today only|Log sets for confirmed exercise|Create custom exercise).*applied\.$/.test(body) ? await lifecycle.context() : "";
+      return context ? `${body}\n${context}` : body;
+    };
+    if (us4Result !== undefined) return withContext(us4Result);
     if (lower === "start") {
+      const active = (await client.query("select name from workout_sessions where user_id=$1 and status in ('ACTIVE','PAUSED','PROPOSED')", [userId])).rows[0];
+      if (active) return `${active.name} is already active. Resume, finish, save incomplete, discard, or replace?`;
       await this.startWorkout(client, userId);
-      return "Started workout";
+      return `Started workout\n${await lifecycle.context()}`.trim();
     }
-    if (lower === "finish workout" || lower === "finish" || lower === "done") {
-      await this.finishWorkout(client, userId);
-      return "Finished workout";
-    }
+    if (isResumeIntent(text)) return lifecycle.resume();
+    const completion = parseCompletionIntent(text);
+    if (completion) return lifecycle.finish(`${inboundId}:finish`, completion);
     const commandKey = `${inboundId}:log`;
     const existing = await client.query(
       `select id from command_executions where user_id = $1 and idempotency_key = $2 and status = 'COMPLETED'`,
@@ -394,7 +434,15 @@ export class PostgresVerticalSliceApp {
       const envelope = await this.interpreter.interpret({
         userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0, ...(activeContext.rows[0]?.display_name ? { activeExercise: activeContext.rows[0].display_name } : {}), knownExerciseRefs: known.rows.map(row => row.display_name), confirmedAliases: aliases.rows.map(row => ({ alias: row.alias_text, exerciseRef: row.display_name })) }
       });
-      return us4.dispatchEnvelope(envelope, text, `${inboundId}:us4`);
+      const validated = parseProposedActionEnvelope(envelope);
+      if (validated.requiresClarification) return validated.clarificationQuestion ?? "Please clarify the request.";
+      if (validated.action.type === "RESUME_WORKOUT") return lifecycle.resume(validated.action.workoutRef);
+      if (validated.action.type === "FINISH_WORKOUT") {
+        // A model-supplied completion choice is not evidence of explicit user consent.
+        const choice = parseCompletionIntent(text);
+        return lifecycle.finish(`${inboundId}:finish`, choice ?? "REQUEST");
+      }
+      return withContext(await us4.dispatchEnvelope(validated, text, `${inboundId}:us4`));
     }
     return "Logged set";
   }
@@ -456,6 +504,7 @@ export class PostgresVerticalSliceApp {
         ]);
       }
     }
+    await client.query("update session_exercises se set exercise_name_snapshot=e.display_name from exercise_identities e where se.exercise_identity_id=e.id and se.workout_session_id=$1", [workoutId]);
   }
 
   private async logSets(client: PoolClient, userId: string, inboundId: string, commandKey: string, text: string): Promise<void> {
@@ -528,36 +577,6 @@ export class PostgresVerticalSliceApp {
       );
     }
     await client.query("update workout_sessions set version=version+1 where id=$1 and user_id=$2", [active.id, userId]);
-  }
-
-  private async finishWorkout(client: PoolClient, userId: string): Promise<void> {
-    const workout = await client.query<{ id: string; routine_id: string; session_template_id: string }>(
-      `select id, routine_id, session_template_id from workout_sessions where user_id = $1 and status = 'ACTIVE'`,
-      [userId]
-    );
-    const row = workout.rows[0];
-    if (!row) throw new DomainError("No active workout", "NO_ACTIVE_WORKOUT");
-    await client.query(
-      `update workout_sessions set status = 'COMPLETED', completion_intent = 'COMPLETE', completed_at = now(), active_session_exercise_id = null,version=version+1 where id = $1`,
-      [row.id]
-    );
-    const next = await client.query<{ id: string; sequence_index: number }>(
-      `select id, sequence_index from workout_session_templates
-       where routine_id = $1 and sequence_index > (select sequence_index from workout_session_templates where id = $2)
-       order by sequence_index asc limit 1`,
-      [row.routine_id, row.session_template_id]
-    );
-    const fallback = await client.query<{ id: string; sequence_index: number }>(
-      `select id, sequence_index from workout_session_templates where routine_id = $1 order by sequence_index asc limit 1`,
-      [row.routine_id]
-    );
-    const target = next.rows[0] ?? fallback.rows[0];
-    if (target) {
-      await client.query(
-        `update routine_sequence_cursors set next_session_template_id = $1, cursor_sequence_index = $2 where routine_id = $3`,
-        [target.id, target.sequence_index, row.routine_id]
-      );
-    }
   }
 
   private async persistOutbound(

@@ -9,6 +9,8 @@ import {
 import { LinkService } from "./link-service.js";
 import { WorkoutService } from "../workouts/workout-service.js";
 import { parseUs4Message, type Us4Action } from "../parser/us4-parser.js";
+import { parseCompletionIntent } from "../workouts/completion-policy.js";
+import { isResumeIntent } from "../workouts/resume-workout-command.js";
 
 export type Us4MessageHandlers = {
   resolveConfirmation(text: string): Promise<string | undefined>;
@@ -124,9 +126,16 @@ export class InboundMessageProcessor {
       const workout = await this.workoutService.startNextWorkout(userId);
       return `Started ${workout.name}`;
     }
-    if (["finish", "finish workout", "done"].includes(text)) {
-      const workout = await this.workoutService.finishWorkout(userId, "COMPLETE");
-      return `Finished ${workout.name}`;
+    if (isResumeIntent(text)) return `Resumed ${(await this.workoutService.resumeWorkout(userId)).name}`;
+    const completion = parseCompletionIntent(text);
+    if (completion) {
+      try {
+        const workout = await this.workoutService.finishWorkout(userId, completion);
+        return `${workout.name}: ${workout.status.toLowerCase()}`;
+      } catch (error) {
+        if (error instanceof DomainError && error.code === "COMPLETION_CHOICE_REQUIRED") return error.message;
+        throw error;
+      }
     }
 
     const sets = await this.workoutService.logSetMessage({

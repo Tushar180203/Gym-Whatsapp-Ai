@@ -42,7 +42,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     expect(await query("select reps,load_semantics,weight_unit from workout_sets")).toEqual([{ reps: 9, load_semantics: "PER_HAND_PER_SIDE", weight_unit: "LB" }]);
     const audit = await query("select before_snapshot,after_snapshot from corrections where type='CORRECT_SET'");
     expect(audit).toHaveLength(1); expect(audit[0]).toMatchObject({ before_snapshot: { reps: 10 }, after_snapshot: { reps: 9 } });
-    await send("finish"); await app.close(); app = new PostgresVerticalSliceApp({ connectionString: scopedUrl });
+    await send("finish"); await send("save completed"); await app.close(); app = new PostgresVerticalSliceApp({ connectionString: scopedUrl });
     expect((await app.history(userId))[0]?.sets[0]).toMatchObject({ reps: 9, weightUnit: "LB", loadSemantics: "PER_HAND_PER_SIDE" });
     expect(await query("select before_snapshot,after_snapshot from corrections where type='CORRECT_SET'")).toEqual(audit);
     expect(mock.requests).toHaveLength(0);
@@ -98,7 +98,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     await send("45x10,45x9,45x8"); expect((await send("delete last set")).body).toContain("applied");
     expect((await send("delete incline set 1")).body).toContain("Reply yes"); await send("no");
     expect((await query("select count(*)::int as n from workout_sets where status='RECORDED'"))[0].n).toBe(2);
-    await send("finish"); const target = (await query("select id from workout_sets where set_index=1"))[0].id;
+    await send("finish"); await send("save completed"); const target = (await query("select id from workout_sets where set_index=1"))[0].id;
     propose({ type: "CORRECT_SET", targetRef: target, replacement: { reps: 12 } });
     expect((await send("completed set 1 was 12")).body).toContain("Reply yes"); await send("yes");
     expect((await app.history(userId))[0]?.sets[0]?.reps).toBe(12);
@@ -172,7 +172,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     expect(await query("select * from session_exercises order by id")).toEqual(sessionBefore);
     const future = await query("select e.display_name,p.order_index from planned_exercises p join exercise_identities e on e.id=p.exercise_identity_id join workout_session_templates t on t.id=p.session_template_id where t.name='Upper' and p.removed_at is null");
     expect(future).toEqual([{ display_name: "Squat", order_index: 0 }]);
-    await send("finish"); await send("start"); await send("finish"); await send("start");
+    await send("45x10"); await send("finish"); await send("save completed"); await send("start"); await send("80x5,80x5,80x5"); await send("finish"); await send("start");
     const active = await app.activeWorkout(userId);
     expect((await query("select e.display_name from session_exercises se join exercise_identities e on e.id=se.exercise_identity_id where se.workout_session_id=$1", [active!.id])).map(row => row.display_name)).toEqual(["Squat"]);
   });

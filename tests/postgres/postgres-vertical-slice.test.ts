@@ -154,6 +154,7 @@ describePostgres("PostgreSQL deterministic vertical slice", () => {
     await send(app, "restart-set-1", "45 lb x 10");
     await send(app, "restart-set-2", "45 each 9");
     await send(app, "restart-finish", "finish workout");
+    await send(app, "restart-complete-choice", "save completed");
 
     const beforeRestart = await app.history(userId);
     expect(beforeRestart[0]?.sets.map((set) => [set.loadValue, set.weightUnit, set.loadSemantics, set.reps])).toEqual([

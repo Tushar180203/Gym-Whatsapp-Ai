@@ -21,7 +21,9 @@
     "eval": "vitest run packages/evals tests/integration/ai packages/ai packages/contracts/src/ai",
     "eval:real-provider": "RUN_REAL_PROVIDER_EVAL=1 vitest run packages/evals/src/real-provider-smoke.test.ts",
     "dev": "next dev apps/web --webpack",
-    "test:us4:web": "playwright test -c tests/e2e/us4/playwright.config.ts"
+    "build": "next build apps/web --webpack",
+    "test:us4:web": "playwright test -c tests/e2e/us4/playwright.config.ts",
+    "test:us5:e2e": "playwright test -c tests/e2e/us5/playwright.config.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

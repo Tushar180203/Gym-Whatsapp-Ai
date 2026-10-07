@@ -175,7 +175,7 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 ### Implementation for Minimal Vertical Slice
 
 - [X] T074 Implement finish workout command and completion choice handling for complete, incomplete, continue, discard, summary, duration, and sequence advancement policy in `packages/domain/src/workouts/finish-workout-command.ts` [Trace: FR-050-FR-052h, Data Model WorkoutSession transitions]
-- [ ] T075 Implement resume active workout command that keeps subsequent messages on the existing active session in `packages/domain/src/workouts/resume-workout-command.ts` [Trace: FR-024f, FR-052f]
+- [X] T075 Implement resume active workout command that keeps subsequent messages on the existing active session in `packages/domain/src/workouts/resume-workout-command.ts` [Trace: FR-024f, FR-052f]
 - [X] T076 Implement minimal finish summary formatting for WhatsApp without previous-performance or PR claims in `apps/web/server/whatsapp/response-formatters.ts` [Trace: FR-051-FR-052]
 - [X] T077 Implement history persistence query for completed/incomplete workouts and workout details in `packages/persistence/src/queries/workout-history-query.ts` [Trace: FR-053-FR-055, Data Model WorkoutSession]
 
@@ -242,15 +242,17 @@ description: "Implementation tasks for WhatsApp Workout Companion"
 
 ### Tests for User Story 5
 
-- [ ] T102 [P] [US5] Add previous-performance tests for exact confirmed exercise identity, confirmed alias, comparable unit/load semantics, no similar-exercise substitution, and no prior history in `packages/analytics/src/previous-performance-service.test.ts` [Trace: FR-025-FR-027d, CHK036]
-- [ ] T103 [P] [US5] Add personal-record tests for highest load, highest reps at same load, corrected data, soft-deleted exclusion, no estimated 1RM, and session-only substitution independent history in `packages/analytics/src/personal-record-service.test.ts` [Trace: FR-056-FR-057b, CHK037]
-- [ ] T104 [P] [US5] Add executable `eval-case.v1` fixtures for start intents, ambiguous starts, active-workout start, exact previous-performance lookup, no exact prior history, session-only change, permanent routine request, and ambiguous session-versus-permanent change in `packages/evals/fixtures/intent/us5-context-pr.yaml` [Trace: T078, T087, Contract eval-cases.md, FR-019-FR-027d, FR-049a-FR-049e]
+- [X] T102 [P] [US5] Add previous-performance tests for exact confirmed exercise identity, confirmed alias, comparable unit/load semantics, no similar-exercise substitution, and no prior history in `packages/analytics/src/previous-performance-service.test.ts` [Trace: FR-025-FR-027d, CHK036]
+- [X] T103 [P] [US5] Add personal-record tests for highest load, highest reps at same load, corrected data, soft-deleted exclusion, no estimated 1RM, and session-only substitution independent history in `packages/analytics/src/personal-record-service.test.ts` [Trace: FR-056-FR-057b, CHK037]
+- [X] T104 [P] [US5] Add executable `eval-case.v1` fixtures for start intents, ambiguous starts, active-workout start, exact previous-performance lookup, no exact prior history, session-only change, permanent routine request, and ambiguous session-versus-permanent change in `packages/evals/fixtures/intent/us5-context-pr.yaml` [Trace: T078, T087, Contract eval-cases.md, FR-019-FR-027d, FR-049a-FR-049e]
 
 ### Implementation for User Story 5
 
-- [ ] T105 [US5] Implement previous-performance service using most recent exact confirmed exercise identity with compatible unit and load semantics only in `packages/analytics/src/previous-performance-service.ts` [Trace: FR-025-FR-027d, Data Model Derived Query Services]
-- [ ] T106 [US5] Implement personal-record service derived on demand from current valid `WorkoutSet` records with highest recorded load and highest reps at same load in `packages/analytics/src/personal-record-service.ts` [Trace: FR-056-FR-057b, Plan Analytics And PR Services]
-- [ ] T107 [US5] Add previous-performance context and deterministic PR summary formatting for WhatsApp in `apps/web/server/whatsapp/response-formatters.ts` [Trace: FR-025-FR-027, FR-051-FR-052]
+- [X] T105 [US5] Implement previous-performance service using most recent exact confirmed exercise identity with compatible unit and load semantics only in `packages/analytics/src/previous-performance-service.ts` [Trace: FR-025-FR-027d, Data Model Derived Query Services]
+- [X] T106 [US5] Implement personal-record service derived on demand from current valid `WorkoutSet` records with highest recorded load and highest reps at same load in `packages/analytics/src/personal-record-service.ts` [Trace: FR-056-FR-057b, Plan Analytics And PR Services]
+- [X] T107 [US5] Add previous-performance context and deterministic PR summary formatting for WhatsApp in `apps/web/server/whatsapp/response-formatters.ts` [Trace: FR-025-FR-027, FR-051-FR-052]
+
+**US5 implementation evidence (2026-10-07)**: T102-T107 and T075 are implemented. The PostgreSQL transaction-bound lifecycle lives in `packages/persistence/src/workout-lifecycle.ts`; pure completion policy and response formatting live in `packages/domain/src/workouts/completion-policy.ts` and `packages/domain/src/workouts/workout-response.ts`. `packages/persistence/src/workout-history-queries.ts` supplies owner-scoped current recorded sets to the pure analytics services. This also completes the production behavior behind T074/T076/T077: persisted completion choices, explicit completed/incomplete/continue/discard handling, deterministic duration/summary, idempotent finish results, snapshot details, and eligible-only cursor advancement. `0003_us5.sql` adds pending-choice state, exercise-name snapshots and a lookup index, not PR materialization. Migration backfill preserves the names available at upgrade; it cannot recover names already overwritten before snapshots existed. `tests/postgres/us5.test.ts` proves restart, corrections/deletions, aliases, no similar fallback, ownership and concurrent completion. `tests/e2e/us5/workout-lifecycle.spec.ts` exercises real HTTP auth/link/webhook/log/resume/finish/history; routine setup uses the existing repository API rather than adding a deferred US1 editor route. Ten executable US5 fixtures cover intent only; natural-language history execution remains US6. Normal tests use mock AI; Gemini does not derive metrics. All US6/US7 tasks remain deferred.
 
 **Checkpoint**: Returning-workout context and deterministic PRs work without AI-generated metrics.
 

@@ -7,6 +7,7 @@ import {
   type WorkoutSet
 } from "../../../persistence/src/index.js";
 import { parseSetMessage } from "../parser/set-parser.js";
+import { requiresCompletionChoice, type CompletionIntent } from "./completion-policy.js";
 
 export class WorkoutService {
   constructor(private readonly store: InMemoryStore) {}
@@ -146,23 +147,37 @@ export class WorkoutService {
     });
   }
 
-  async finishWorkout(userId: string, intent: "COMPLETE" | "INCOMPLETE" = "COMPLETE") {
+  async resumeWorkout(userId: string) {
+    return this.store.withUserLock(userId, async () => {
+      const workout = this.requireActiveWorkout(userId);
+      workout.status = "ACTIVE";
+      return workout;
+    });
+  }
+
+  async finishWorkout(userId: string, intent: CompletionIntent | "REQUEST" = "REQUEST") {
     return this.store.withUserLock(userId, async () => {
       const workout = this.requireActiveWorkout(userId);
       const sets = [...this.store.sets.values()].filter(
         (set) => set.workoutSessionId === workout.id && set.status === "RECORDED"
       );
-      if (sets.length === 0 && intent === "COMPLETE") {
-        throw new DomainError("Cannot complete empty workout without explicit incomplete intent", "EMPTY_WORKOUT");
+      if (intent === "CONTINUE") return workout;
+      const progress = [...this.store.sessionExercises.values()].filter(exercise => exercise.workoutSessionId === workout.id)
+        .map(exercise => ({ status: exercise.status, plannedSets: exercise.plannedSetCountSnapshot, skippedSets: 0,
+          recordedSets: sets.filter(set => set.sessionExerciseId === exercise.id).length }));
+      if ((intent === "REQUEST" && requiresCompletionChoice(progress, sets.length)) || (sets.length === 0 && intent === "COMPLETE")) {
+        throw new DomainError(sets.length === 0 ? "No recorded sets. Save incomplete, continue, or discard?" : "Unfinished work remains. Save completed, save incomplete, continue, or discard?", "COMPLETION_CHOICE_REQUIRED");
       }
-      workout.status = intent === "COMPLETE" ? "COMPLETED" : "INCOMPLETE";
-      workout.completionIntent = intent;
+      const completion = intent === "REQUEST" ? "COMPLETE" : intent;
+      workout.status = completion === "COMPLETE" ? "COMPLETED" : completion === "DISCARD" ? "DISCARDED" : "INCOMPLETE";
+      workout.completionIntent = completion;
       workout.completedAt = this.store.now();
       workout.activeSessionExerciseId = null;
       workout.durationSeconds = workout.startedAt
         ? Math.max(0, Math.floor((workout.completedAt.getTime() - workout.startedAt.getTime()) / 1000))
         : null;
       workout.version += 1;
+      if (completion === "DISCARD") { workout.discardedAt = workout.completedAt; workout.completedAt = null; }
       if (workout.status === "COMPLETED" && workout.sequenceProgressionPolicy === "ADVANCE_NORMAL_SEQUENCE") {
         this.advanceCursor(workout);
       }
@@ -175,7 +190,7 @@ export class WorkoutService {
       .filter((workout) => workout.userId === userId && ["COMPLETED", "INCOMPLETE"].includes(workout.status))
       .map((workout) => ({
         workout,
-        sets: [...this.store.sets.values()].filter((set) => set.workoutSessionId === workout.id)
+        sets: [...this.store.sets.values()].filter((set) => set.workoutSessionId === workout.id && set.status === "RECORDED")
       }));
   }
 
@@ -209,6 +224,7 @@ export class WorkoutService {
   private advanceCursor(workout: WorkoutSession): void {
     const cursor = [...this.store.cursors.values()].find((item) => item.routineId === workout.routineId);
     if (!cursor) return;
+    if (cursor.nextSessionTemplateId !== workout.sessionTemplateId) return;
     const templates = [...this.store.templates.values()]
       .filter((template) => template.routineId === workout.routineId)
       .sort((a, b) => a.sequenceIndex - b.sequenceIndex);
