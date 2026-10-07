@@ -10,6 +10,9 @@ import { reorderedIds } from "../../domain/src/workouts/session-mutation-command
 import { routineChangePolicy } from "../../domain/src/routines/routine-change-request-service.js";
 import type { Us4Action } from "../../domain/src/parser/us4-parser.js";
 import { parseSetMessage } from "../../domain/src/parser/set-parser.js";
+import { WorkoutSelection } from "./workout-selection.js";
+import type { ReplaceWorkoutAction } from "../../domain/src/parser/us4-parser.js";
+import { DomainError } from "./store.js";
 
 type Row = Record<string, any>;
 type Plan = { kind: string; args: Row; versions: Record<string, number>; confirm: boolean; summary: string };
@@ -54,7 +57,7 @@ export class Us4Commands {
     return this.dispatch(envelope.action, input, key);
   }
 
-  async dispatch(action: Us4Action, input: string, key: string): Promise<string> {
+  async dispatch(action: Us4Action | ReplaceWorkoutAction, input: string, key: string): Promise<string> {
     await this.authorize();
     const existing = (await this.rows("select result_summary from command_executions where user_id=$1 and idempotency_key=$2 and status='COMPLETED'", [this.userId, key]))[0];
     if (existing) return existing.result_summary.body;
@@ -71,9 +74,29 @@ export class Us4Commands {
     return this.execute(prepared, key);
   }
 
-  private async prepare(action: Us4Action, input: string): Promise<Prepared> {
+  private async prepare(action: Us4Action | ReplaceWorkoutAction, input: string): Promise<Prepared> {
     const workout = await this.active();
     if ("scope" in action && action.scope === "AMBIGUOUS") return { question: "Today only or update your routine?" };
+    if (action.type === "REPLACE_WORKOUT") {
+      if (!workout || workout.status === "PROPOSED") return { question: "Choose a proposed session, or start a workout before replacing an active one." };
+      const target = await new WorkoutSelection(this.db, this.userId).target(undefined, action.sessionRef);
+      if ("clarification" in target) return { question: target.clarification };
+      return { kind: "REPLACE_WORKOUT", args: { workoutId: workout.id, templateId: target.template.id },
+        versions: { ...await this.versions(workout), [`routines:${target.template.routine_id}`]: target.template.routine_version, [`routine_sequence_cursors:${target.template.cursor_id}`]: target.template.cursor_version },
+        confirm: true, summary: `Replace ${workout.name} with ${target.template.name}` };
+    }
+    if (action.type === "UPDATE_ROUTINE_REQUEST" && action.requestedChange.operation === "REORDER_SESSION") {
+      if (action.scope !== "PERMANENT_ROUTINE") return { question: "Today only or update your routine?" };
+      const change = action.requestedChange;
+      const templates = await this.rows("select t.*,r.version as routine_version from workout_session_templates t join routines r on r.id=t.routine_id where r.user_id=$1 and r.archived_at is null and t.archived_at is null and (t.id=$2 or lower(t.name)=lower($2))", [this.userId, change.sessionRef]);
+      if (templates.length !== 1) return { question: "Which exact routine session do you mean?" };
+      const target = templates[0]!, cursor = (await this.rows("select * from routine_sequence_cursors where routine_id=$1 and user_id=$2", [target.routine_id, this.userId]))[0]!;
+      const sessions = await this.rows("select id from workout_session_templates where routine_id=$1 and archived_at is null order by sequence_index", [target.routine_id]);
+      const ordinal = change.newOrderRef === "first" ? 1 : Number(change.newOrderRef);
+      if (!Number.isInteger(ordinal) || ordinal < 1 || ordinal > sessions.length) return { question: "Choose a valid session position." };
+      return { kind: "REORDER_SESSION", args: { routineId: target.routine_id, templateId: target.id, ordinal },
+        versions: { [`routines:${target.routine_id}`]: target.routine_version, [`routine_sequence_cursors:${cursor.id}`]: cursor.version }, confirm: true, summary: `Reorder future routine session ${target.name} to position ${ordinal}` };
+    }
     if (action.type === "CORRECT_SET" || action.type === "DELETE_SET") {
       const sets = await this.sets();
       let targetRef = action.targetRef;
@@ -132,6 +155,7 @@ export class Us4Commands {
     const routine = (await this.rows("select * from routines where id=$1 and user_id=$2", [workout.routine_id, this.userId]))[0]!;
     const versions = await this.versions(workout);
     if (action.type === "LOG_CONTEXT_SETS") {
+      if (workout.status !== "ACTIVE") throw new DomainError("Start the proposed workout before logging", "NO_ACTIVE_WORKOUT");
       const identity = await this.identity(action.exerciseRef);
       if ("question" in identity) return identity;
       const profile = (await this.rows("select preferred_weight_unit from user_profiles where user_id=$1", [this.userId]))[0];
@@ -253,7 +277,7 @@ export class Us4Commands {
   private async validVersions(plan: Plan): Promise<boolean> {
     for (const [key, version] of Object.entries(plan.versions)) {
       const split = key.indexOf(":"), table = key.slice(0, split), id = key.slice(split + 1);
-      if (!["workout_sessions", "routines", "exercise_identities"].includes(table)) return false;
+      if (!["workout_sessions", "routines", "exercise_identities", "routine_sequence_cursors"].includes(table)) return false;
       const owner = table === "exercise_identities" ? "(owner_user_id=$2 or owner_user_id is null)" : "user_id=$2";
       const row = (await this.rows(`select version from ${table} where id=$1 and ${owner} for update`, [id, this.userId]))[0];
       if (!row || row.version !== version) return false;
@@ -291,7 +315,18 @@ export class Us4Commands {
     if (!(await this.validVersions(plan))) throw new Error("The target changed. Request the change again.");
     if (plan.confirm && !confirmationId && this.surface !== "WEB") throw new Error("Confirmation required");
     const commandId = await this.command(key, plan.kind), a = plan.args;
-    if (plan.kind === "CORRECT_SET" || plan.kind === "DELETE_SET") {
+    if (plan.kind === "REPLACE_WORKOUT") {
+      const before = (await this.rows("select * from workout_sessions where id=$1 and user_id=$2", [a.workoutId, this.userId]))[0];
+      await new WorkoutSelection(this.db, this.userId).replace(a.workoutId, a.templateId);
+      await this.audit(commandId, confirmationId, plan.kind, "WORKOUT_SESSION", a.workoutId, before, { status: "CANCELLED_REPLACED", replacementTemplateId: a.templateId }, a.workoutId);
+    } else if (plan.kind === "REORDER_SESSION") {
+      const before = await this.rows("select id,sequence_index from workout_session_templates where routine_id=$1 and archived_at is null order by sequence_index", [a.routineId]);
+      const ids = reorderedIds(before.map(row => row.id), a.templateId, a.ordinal);
+      await this.db.query("update workout_session_templates set sequence_index=sequence_index+100000 where routine_id=$1", [a.routineId]);
+      for (const [index, id] of ids.entries()) await this.db.query("update workout_session_templates set sequence_index=$2 where id=$1 and routine_id=$3", [id, index, a.routineId]);
+      await this.db.query("update routine_sequence_cursors c set cursor_sequence_index=t.sequence_index from workout_session_templates t where c.next_session_template_id=t.id and c.routine_id=$1 and c.user_id=$2", [a.routineId, this.userId]);
+      await this.audit(commandId, confirmationId, plan.kind, "ROUTINE", a.routineId, before, ids);
+    } else if (plan.kind === "CORRECT_SET" || plan.kind === "DELETE_SET") {
       const target = (await this.rows("select * from workout_sets where id=$1 and user_id=$2 and status='RECORDED' for update", [a.targetId, this.userId]))[0];
       if (!target) throw new Error("Set unavailable");
       if (plan.kind === "CORRECT_SET") await this.db.query("update workout_sets set load_value=$2,weight_unit=$3,load_semantics=$4,reps=$5 where id=$1 and user_id=$6", [a.targetId, a.after.loadValue, a.after.weightUnit, a.after.loadSemantics, a.after.reps, this.userId]);

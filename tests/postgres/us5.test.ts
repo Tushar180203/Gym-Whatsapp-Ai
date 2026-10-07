@@ -18,7 +18,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
     await app.migrate(); next = 0;
     ({ userId, sessionToken } = await app.signUp("us5@example.com", "correct horse battery staple"));
     await app.setPreferredWeightUnit(userId, "LB"); await app.createRoutine(userId);
-    await send(`link ${await app.createLinkToken(userId)}`); await send("start");
+    await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("start planned");
   });
   afterEach(async () => { await app?.close(); });
   async function send(text: string, messageId = `us5-${next++}`, crash = false) {
@@ -82,7 +82,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
     await send("45x10,50x8,45x9"); await send("done");
     const identity = (await query("select id from exercise_identities where display_name='Incline Dumbbell Press'"))[0].id;
     // Exercise the existing confirmation path rather than seeding an alias.
-    await send("start");
+    await send("start"); await send("start planned");
     mock.enqueue({ schemaVersion: "workout-action.v1", action: { type: "MAP_EXERCISE_ALIAS", alias: "incline", exerciseRef: "Incline Dumbbell Press" }, confidence: "high", requiresClarification: false, rationaleCodes: [], forbiddenDirectMutation: true });
     await send("call Incline Dumbbell Press incline"); await send("confirm");
     expect((await send("add Smith Incline Press today")).body).toContain("Reply yes");
@@ -115,6 +115,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
   it("latest comparable session only, concise active context, and snapshot history ignore mutable templates", async () => {
     await send("45x10"); await send("save incomplete");
     expect((await send("start")).body).toContain("Last time: 45 LB each x 10");
+    await send("start planned");
     await send("40x8"); await send("save incomplete");
     expect((await prior())?.map(set => [set.loadValue,set.reps])).toEqual([[40,8]]);
     const workoutId = (await app.history(userId))[0]!.workout.id;

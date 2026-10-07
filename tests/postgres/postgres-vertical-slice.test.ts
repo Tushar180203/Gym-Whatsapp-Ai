@@ -127,6 +127,7 @@ describePostgres("PostgreSQL deterministic vertical slice", () => {
     const { userId, token } = await readyUser(app);
     await send(app, "wa-link", `link ${token}`);
     await send(app, "wa-start", "start");
+    await send(app, "wa-accept", "start planned");
     await send(app, "wa-set-1", "45 each 10");
     await send(app, "wa-set-2", "same x 9");
     await send(app, "wa-set-3", "45 kg x 8");
@@ -152,6 +153,7 @@ describePostgres("PostgreSQL deterministic vertical slice", () => {
     const { userId, token } = await readyUser(app);
     await send(app, "restart-link", `link ${token}`);
     await send(app, "restart-start", "start");
+    await send(app, "restart-accept", "start planned");
     await send(app, "restart-set-1", "45 lb x 10");
     await send(app, "restart-set-2", "45 each 9");
     await send(app, "restart-finish", "finish workout");
@@ -200,10 +202,21 @@ describePostgres("PostgreSQL deterministic vertical slice", () => {
     expect(cursor.rows[0]?.name).toBe("Lower");
   });
 
+  it("persists eight completed reps without inventing the failed ninth rep", async () => {
+    const { userId, token } = await readyUser(app);
+    await send(app, "failure-note-link", `link ${token}`);
+    await send(app, "failure-note-start", "start");
+    await send(app, "failure-note-accept", "start planned");
+    await send(app, "failure-note-set", "50x8 failed the 9th");
+    const sets = (await app.pool.query("select load_value::float8 as load,reps from workout_sets where user_id=$1", [userId])).rows;
+    expect(sets).toEqual([{ load: 50, reps: 8 }]);
+  });
+
   it("enforces inbound, command, set, concurrency, and one-active-workout idempotency in PostgreSQL", async () => {
     const { userId, token } = await readyUser(app);
     await send(app, "idem-link", `link ${token}`);
     await Promise.all([send(app, "idem-start", "start"), send(app, "idem-start", "start")]);
+    await send(app, "idem-accept", "start planned");
 
     const activeWorkoutCount = await app.pool.query<{ count: string }>(
       `select count(*)::text from workout_sessions where user_id = $1 and status = 'ACTIVE'`,

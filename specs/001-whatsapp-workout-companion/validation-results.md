@@ -1,5 +1,113 @@
 # Release Validation Results
 
+## Phase A Final Results (2026-10-07)
+
+This section supersedes setup/start gaps and counts in the historical hardening run below. Scope is approved core self-service only; no Phase B/C work, spec changes or new task IDs.
+
+Runtime: Node 22.23.3, PostgreSQL 14.24. Child scripts use Node 22 first on PATH.
+
+| Command / acceptance | Result |
+|---|---|
+| npm run lint | PASS; remains TypeScript-only, T007 still open |
+| npm run typecheck | PASS |
+| npm run test | 147 passed / 77 skipped (76 PostgreSQL cases run separately, one opt-in diagnostic); no live provider call |
+| npm run test:integration | 42/42 |
+| npm run test:e2e | 2/2 Vitest fast vertical slices; not browser evidence |
+| npm run eval | 71 passed / one diagnostic skipped; 82/82 mock fixtures |
+| npm run test:postgres | 76/76 in nine files |
+| npm run build | PASS; configuration, onboarding and selection routes compile |
+| npm run test:phase-a:web | 5/5; actual UI/API, desktop1280/mobile390, foreign/anonymous resource rejection, token expiry UI |
+| npm run test:release:web | 2/2; actual setup APIs, signed inbound identity proof, correction/completion/history/analytics/PR and link revocation |
+| git diff --check | PASS |
+
+Fresh database `phase_a_release_20261007`: ordered db:migrate succeeds, ledger confirms all seven migrations. Populated 0006-to-0007 configuration upgrade preserves existing templates/identities/cursors. Existing populated integrity upgrade/rerun tests also pass.
+Transaction-affinity regression first failed against pool.query(BEGIN); one checked-out client now passes success, trigger-injected rollback/no-orphans and concurrent success/failure cases. Real configuration transactions separately prove mid-plan rollback and four concurrent isolated creations.
+Completed and active snapshots survive template edits/rename/reorder and repository restart. Replacement confirmation survives restart and concurrent/repeated deliveries; one audit, one new active workout, stale/foreign targets rejected, off-sequence completion leaves normal cursor unchanged.
+Parser and PostgreSQL tests persist 50x8 failed the 9th as eight reps. No failed ninth value or advanced metadata is invented. Missing preferred unit fails with a safe domain error and no set. Profile name/unit round-trip; aliases reuse exact identity and conflicts clarify.
+Deterministic start examples make zero AI calls; model START_WORKOUT only proposes. Invalid permanent-action scope is rejected by unchanged local Zod validation before any confirmation/mutation. Permanent sequence reorder uses existing US4 confirmation plus routine/cursor version checks.
+Desktop/mobile screenshots reviewed for readable non-overlapping layout and no horizontal overflow. Browser token-expiry checks fast-forward only the browser clock; database expiry/single-use remain enforced server-side. Live Meta delivery and real Gemini quality are not claimed.
+
+Failed attempts were fixed without disabling tests: semantic combobox targeting; replacement assertion now checks the existing applied-confirmation message plus actual new active ID/status; snapshot fixture now configures required preference and uses the real auth credential; invalid model scope now asserts local rejection (it is not a valid proposal). Eval inventedHistory helper is intended for QUERY_HISTORY/UNKNOWN; the start fixture instead asserts START_WORKOUT and no direct persistence field, while PG tests prove runtime authority.
+
+A concurrent regression run hit the existing five-second migration-test timeout under host contention. No test timeout/assertion was relaxed. The final standalone PostgreSQL run passes 76/76 in 29.51s, including the actual populated ledger upgrade/rerun.
+
+Local preview: http://127.0.0.1:3110/onboarding against the fresh Phase A database. Initial environment-loader launches failed with unsupported NODE_OPTIONS; neither local credentials nor .env were edited. The working preview clears NODE_OPTIONS and uses an offline AI placeholder, so it is for deterministic setup/selection review only. Live Gemini is not enabled in that preview. Normal runtime still uses the existing configurable Gemini adapter with properly injected configuration.
+
+Tasks: 134 unchanged, 114 checked / 20 unchecked. T046C/T048 remain partial; T050/T056/T059 and T124/T125 retain transport limitations. Classification continues on the existing analytics surface; no duplicate form/service is introduced merely to change a checkbox. Requirements-quality checklists remain 16/16 and 44/44, untouched. All 19 prior partial core requirement rows have Phase A evidence, with exact references in traceability-review.md; this is not live/public-release satisfaction.
+Local Phase A self-service MVP: YES. End-to-end WhatsApp MVP/public production release: NO. Remaining transport, privacy/erasure/backups/retention/propagation, provider processing, hosting/edge, historical outbound reconciliation, toolchain advisories and performance/SLO decisions remain open. No Phase B or C was begun.
+
+## Historical Hardening Run
+
+Phase A source/documentation manifest (65 files; transient Next-generated declarations excluded):
+
+- `.prettierignore`
+- `README.md`
+- `apps/web/app/(product)/onboarding/page.tsx`
+- `apps/web/app/(product)/routines/page.tsx`
+- `apps/web/app/api/exercises/[exerciseId]/aliases/route.ts`
+- `apps/web/app/api/exercises/[exerciseId]/route.ts`
+- `apps/web/app/api/exercises/custom/route.ts`
+- `apps/web/app/api/exercises/merge-request/route.ts`
+- `apps/web/app/api/exercises/route.ts`
+- `apps/web/app/api/profile/route.ts`
+- `apps/web/app/api/routines/[routineId]/route.ts`
+- `apps/web/app/api/routines/route.ts`
+- `apps/web/app/api/whatsapp/link-token/route.ts`
+- `apps/web/app/api/whatsapp/link/[id]/route.ts`
+- `apps/web/app/api/whatsapp/link/route.ts`
+- `apps/web/app/api/workouts/[workoutId]/route.ts`
+- `apps/web/app/api/workouts/[workoutId]/sets/[setId]/route.ts`
+- `apps/web/app/api/workouts/[workoutId]/sets/route.ts`
+- `apps/web/app/api/workouts/start/route.ts`
+- `apps/web/app/layout.tsx`
+- `apps/web/app/page.tsx`
+- `apps/web/app/styles.css`
+- `apps/web/components/routines/exercise-identity-controls.tsx`
+- `apps/web/components/routines/routine-editor.tsx`
+- `apps/web/components/routines/setup-view.tsx`
+- `apps/web/components/routines/workout-selection-controls.tsx`
+- `apps/web/components/whatsapp/link-token-manager.tsx`
+- `apps/web/server/configuration.ts`
+- `package.json`
+- `packages/contracts/src/api/configuration.ts`
+- `packages/domain/src/parser/set-parser.test.ts`
+- `packages/domain/src/parser/us4-parser.ts`
+- `packages/domain/src/workouts/start-intent.test.ts`
+- `packages/domain/src/workouts/start-intent.ts`
+- `packages/evals/fixtures/intent/phase-a-selection.yaml`
+- `packages/persistence/migrations/0007_core_configuration.sql`
+- `packages/persistence/src/configuration.ts`
+- `packages/persistence/src/postgres.ts`
+- `packages/persistence/src/us4.ts`
+- `packages/persistence/src/workout-lifecycle.ts`
+- `packages/persistence/src/workout-selection.ts`
+- `specs/001-whatsapp-workout-companion/contracts/api.md`
+- `specs/001-whatsapp-workout-companion/release-readiness.md`
+- `specs/001-whatsapp-workout-companion/research.md`
+- `specs/001-whatsapp-workout-companion/tasks.md`
+- `specs/001-whatsapp-workout-companion/traceability-review.md`
+- `specs/001-whatsapp-workout-companion/validation-results.md`
+- `tests/e2e/core-validation-scenario.spec.ts`
+- `tests/e2e/phase-a/playwright.config.ts`
+- `tests/e2e/us1-onboarding-routine.spec.ts`
+- `tests/e2e/us2-workout-selection.spec.ts`
+- `tests/e2e/us4/history-editor.spec.ts`
+- `tests/e2e/us5/workout-lifecycle.spec.ts`
+- `tests/e2e/us6-history-analytics.spec.ts`
+- `tests/e2e/us7-data-controls.spec.ts`
+- `tests/integration/routines/configuration-contract.test.ts`
+- `tests/postgres/phase-a-configuration.test.ts`
+- `tests/postgres/phase-a-routines.test.ts`
+- `tests/postgres/phase-a-selection.test.ts`
+- `tests/postgres/postgres-vertical-slice.test.ts`
+- `tests/postgres/release-hardening.test.ts`
+- `tests/postgres/us4.test.ts`
+- `tests/postgres/us5.test.ts`
+- `tests/postgres/us6.test.ts`
+- `tests/postgres/us7.test.ts`
+
+The historical file list/counts below describe the prior hardening pass, not this Phase A manifest.
+
 Date: 2026-10-07. Scope: approved T124-T129, no new product features.
 Runtime: Node v22.23.3, npm 10.x. PostgreSQL 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1).
 

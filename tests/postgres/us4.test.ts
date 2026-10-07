@@ -22,7 +22,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     await app.migrate(); next = 0;
     userId = (await app.signUp("us4@example.com", "correct horse battery staple")).userId;
     await app.setPreferredWeightUnit(userId, "LB"); await app.createRoutine(userId);
-    await send(`link ${await app.createLinkToken(userId)}`); await send("start");
+    await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("start planned");
   });
   afterEach(async () => { await app?.close(); });
   function propose(action: ProposedAction) {
@@ -172,7 +172,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     expect(await query("select * from session_exercises order by id")).toEqual(sessionBefore);
     const future = await query("select e.display_name,p.order_index from planned_exercises p join exercise_identities e on e.id=p.exercise_identity_id join workout_session_templates t on t.id=p.session_template_id where t.name='Upper' and p.removed_at is null");
     expect(future).toEqual([{ display_name: "Squat", order_index: 0 }]);
-    await send("45x10"); await send("finish"); await send("save completed"); await send("start"); await send("80x5,80x5,80x5"); await send("finish"); await send("start");
+    await send("45x10"); await send("finish"); await send("save completed"); await send("start"); await send("start planned"); await send("80x5,80x5,80x5"); await send("finish"); await send("start"); await send("start planned");
     const active = await app.activeWorkout(userId);
     expect((await query("select e.display_name from session_exercises se join exercise_identities e on e.id=se.exercise_identity_id where se.workout_session_id=$1", [active!.id])).map(row => row.display_name)).toEqual(["Squat"]);
   });

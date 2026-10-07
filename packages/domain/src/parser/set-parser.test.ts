@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { hasSetNotation, parseSetMessage } from "./set-parser.js";
 
 describe("parseSetMessage", () => {
+  it("records completed reps, not the failed ninth attempt", () => {
+    expect(hasSetNotation("50x8 failed the 9th")).toBe(true);
+    const sets = parseSetMessage("50x8 failed the 9th", { preferredWeightUnit: "KG", exerciseDefaultLoadSemantics: "TOTAL_LOAD" });
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({ loadValue: 50, reps: 8, weightUnit: "KG", loadSemantics: "TOTAL_LOAD" });
+  });
   it("never splits a correction's standalone numeric value into invented load/reps", () => {
     expect(hasSetNotation("completed set 1 was 12")).toBe(false);
     expect(hasSetNotation("make the last one 10 reps")).toBe(false);

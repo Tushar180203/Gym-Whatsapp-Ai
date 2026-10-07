@@ -1,24 +1,23 @@
 # Implementation Traceability Review
 
-Date: 2026-10-07. Scope: T124-T129 only. No requirements or reviewer checklist markers changed.
+Date: 2026-10-07. Updated after Phase A core self-service closure. No requirements or reviewer checklist markers changed.
 
 ## Verdict
 
-Ready for human review: YES. MVP implementation complete/releasable: NO.
-The premise that every planned story is fully implemented does not match this checkout.
-This report identifies gaps without implementing additional product surfaces.
+Ready for human review: YES. Local Phase A self-service journey: YES. End-to-end WhatsApp/public-release MVP: NO.
+Phase A closes approved setup/start/configuration gaps; transport, external decisions and remaining task evidence are not implied complete.
 
-All 137 functional requirement IDs are indexed below. 19 have explicit incomplete behavior;
-7 are discretionary MAY behaviors; remaining rows identify current core implementation/test evidence.
+All 137 functional requirement IDs are indexed below. The 19 previously partial core rows now have Phase A implementation/test evidence;
+7 are discretionary MAY behaviors. This is requirement evidence, not public-release sign-off.
 CORE EVIDENCE is not proof of full live WhatsApp operation, universal route coverage, performance SLOs or model accuracy.
-Index coverage is 137/137 (100%). Excluding seven discretionary MAY requirements, core implementation evidence covers 111/130 (85.4%); 19 remain partial, not fully covered. No requirement is omitted from the matrix.
+Index coverage is 137/137 (100%). Excluding seven discretionary MAY requirements, applicable core evidence is 130/130 (100%); this does not prove live provider transport or close external privacy/operations gates. No requirement is omitted from the matrix.
 Requirements-quality checklists remain requirements 16/16 and readiness 44/44, not release sign-off.
 
 ## Blocking Findings
 
-- R1 HIGH: approved US1 onboarding/routine/link-status/revocation/exercise editor and APIs remain absent. Repository createRoutine is hard-coded and tests call it directly. Profile displayName is silently ignored. No returning-user sign-in surface; secure existing sessions/logout do work. See unchecked T030-T046C and the per-requirement gaps below.
+- R1 RESOLVED for Phase A: real onboarding/routine/link-status/revoke/rename/alias APIs/UI persist validated owner configuration. Profile displayName round-trips. Lower-level tests may retain fixture helpers, but self-service acceptance and the release browser scenario use actual APIs/UI. Returning-user password sign-in was not added; existing secure sessions/logout remain usable.
 - R2 HIGH: outbound WhatsApp adapter and GET webhook challenge are absent (T014/T050/T056). Persisting a response is not delivery. This pass fixes false SENT records to PENDING; real provider send/retry/service-window behavior is not verified. Historic SENT records from older code require operator reconciliation; never assume delivery or blindly resend them.
-- R3 HIGH: start alternatives/session selection/replacement/permanent routine-session sequence changes remain incomplete. Storage policy tests cannot substitute for user execution. See partial FR rows/T053/T054.
+- R3 RESOLVED for Phase A: deterministic start intents and locally validated Gemini START_WORKOUT propose full cursor-selected plans; explicit acceptance, alternatives/rest, confirmed atomic replacement and confirmed permanent sequence reorder have real PostgreSQL/browser evidence. No inferred AI acceptance/replacement; snapshots and off-sequence cursor policy are preserved.
 - R4 HIGH: privacy release decisions remain unresolved: physical erasure, backup erasure, retention duration and deletion propagation, plus external AI/WhatsApp data handling. Soft deletion blocks access but retains rows/audits/operational message bodies. No GDPR/CCPA compliance claim is made.
 - R5 MEDIUM: T007 remains incomplete; lint currently runs the TypeScript compiler, identical to typecheck. T025 observability remains partial: safe failures/duplicate/AI/path signals exist, but full confirmation and outbound lifecycle instrumentation and meaningful deterministic latency distributions are not complete. T124/T125 remain partial for the reasons above. Earlier unchecked tasks are not mechanically marked complete.
 - R6 MEDIUM: development toolchain has nine npm audit entries, including two critical; production audit is clean. Major-version remediation requires a separately reviewed toolchain upgrade. Do not expose test/dev servers or execute untrusted tests with credentials.
@@ -37,24 +36,24 @@ All CHK001-CHK044 remain checked as design-quality criteria; implementation evid
 
 | Items | Current evidence / limitation |
 |---|---|
-| CHK001-CHK006 | PostgreSQL unique active workout, history snapshots, US4 mutations/US5 finish tests; selection/replacement gaps R3. |
-| CHK007-CHK011 | US4 identity/alias/merge and US6 classification tests; rename/editor gap R1. |
-| CHK012-CHK016 | Parser tests and persisted KG/LB/default/per-side values; failed-attempt metadata gap FR-029. |
+| CHK001-CHK006 | PostgreSQL unique active workout, Phase A proposal/selection/replacement, snapshots and US4/US5 finish tests. |
+| CHK007-CHK011 | US4 identity/alias/merge, Phase A configuration/rename/alias and US6 classification tests. |
+| CHK012-CHK016 | Parser/PG tests preserve KG/LB/default/per-side values; 50x8 failed the 9th persists eight reps, without inventing failure metadata. |
 | CHK017-CHK021 | US4 correction/deletion audit, US5 current-truth PRs, US7 removal tests; expiry/stale/duplicate coverage. |
-| CHK022-CHK024 | US5 cursor and off-sequence policy tests; user selection/permanent sequence reorder gap R3. |
+| CHK022-CHK024 | Phase A multi-routine clarification, user selection, off-sequence completion and confirmed permanent reorder tests. |
 | CHK025-CHK028 | Signed normalized token-consumption path and replay identity guard; challenge/outbound gap R2. |
 | CHK029-CHK031 | PostgreSQL recovery/replay/concurrency/restart tests; real send/retry policy not proven R2. |
 | CHK032-CHK035 | Local schemas, guard tests, deterministic zero-provider-call tests, Gemini normalization tests; live smoke is narrow. |
 | CHK036-CHK039 | Exact comparable history/derived PR/primary-only analytics and coaching-boundary tests. |
 | CHK040 | Secure sessions, owner queries, data control tests, redacted log allowlist, bounded local limits; external edge policy/privacy R4. |
-| CHK041-CHK044 | Contract routes inventoried below; absent routes R1/R2, mock eval limitations documented; simple single-app architecture preserved. |
+| CHK041-CHK044 | Configuration/selection routes implemented; absent GET verification/outbound remains R2. Mock eval limitations documented; single-app architecture preserved. |
 
 ## Route Review
 
 Every implemented API route uses apiResponse; owner session resolution is required except signup and signed provider callback. Logout is harmless on repeat.
 Foreign workout/set/classification/export/deletion request IDs are not authorization; PostgreSQL regressions and browser HTTP tests cover them.
 Profile takes owner from session, not client userId. Analytics/history use owner snapshots. Alias/correction targets resolve only inside owner-scoped commands.
-Absent routine/alias/rename routes cannot be claimed tested or completed. Request-ID enumeration returns safe not-found errors.
+Phase A browser HTTP tests reject anonymous/foreign routine/exercise IDs; PostgreSQL tests reject foreign set/replacement IDs. Request-ID enumeration returns safe not-found errors.
 CSRF uses canonical origin when present plus HttpOnly SameSite=Strict cookies; no spoofed forwarding headers are trusted by rate limits.
 Account-deletion receipt replay is limited to exact owner/original unexpired session credential and completed request, never renewed auth.
 
@@ -65,17 +64,17 @@ Paths are relative to repository root. Test files are direct evidence locations,
 | Requirement | Tasks | Implementation | Test / eval evidence | Status |
 |---|---|---|---|---|
 | FR-001 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
-| FR-002 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: Profile PATCH accepts but ignores displayName. |
+| FR-002 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-003 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
 | FR-004 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
 | FR-005 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
-| FR-006 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: Routine configuration is hard-coded in repository setup; approved web/API routine creation is absent. |
-| FR-007 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: No user-facing session naming/configuration API. |
-| FR-008 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: No user-facing planned-exercise configuration API. |
-| FR-009 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: Planned counts exist but no user setup form/API. |
-| FR-010 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: Rep targets exist but no user setup form/API. |
-| FR-011 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: Session mutations exist; planned routine editor is absent. |
-| FR-012 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | PARTIAL: No configurable routine frequency/schedule persistence/surface. |
+| FR-006 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-007 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-008 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-009 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-010 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-011 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-012 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-013 | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | CORE EVIDENCE |
 | FR-014 | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | CORE EVIDENCE |
 | FR-015 | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | CORE EVIDENCE |
@@ -88,19 +87,19 @@ Paths are relative to repository root. Test files are direct evidence locations,
 | FR-018d | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | CORE EVIDENCE |
 | FR-018e | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | OPTIONAL |
 | FR-018f | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | CORE EVIDENCE |
-| FR-018g | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | PARTIAL: Stable IDs exist; exercise rename endpoint/workflow is absent. |
+| FR-018g | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-018h | T090-T101; T031/T040-T045 incomplete | packages/persistence/src/us4.ts; packages/domain/src/exercises/unknown-exercise-flow.ts | tests/postgres/us4.test.ts; tests/postgres/us6.test.ts | CORE EVIDENCE |
-| FR-019 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Deterministic start accepts only literal start; alternative start intents are not dispatched. |
-| FR-020 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Cursor selection is implemented; separate proposal/acceptance path is absent. |
-| FR-021 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: No complete routine/session start ambiguity selection path. |
-| FR-022 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Start presents active context, not the full planned session list. |
-| FR-023 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Pre-start selection/rest/temporary-change surface is incomplete. |
+| FR-019 | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-020 | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-021 | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-022 | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-023 | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-024 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
 | FR-024a | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
-| FR-024b | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Off-sequence policy is tested at storage level; user session-selection command is absent. |
+| FR-024b | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-024c | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
-| FR-024d | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Existing workout is preserved and choices shown; replacement choice is not implemented. |
-| FR-024e | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | PARTIAL: Replacement workflow is absent, rather than authorized without consent. |
+| FR-024d | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
+| FR-024e | T051-T060; T105-T107 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-024f | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
 | FR-025 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
 | FR-026 | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
@@ -110,7 +109,7 @@ Paths are relative to repository root. Test files are direct evidence locations,
 | FR-027c | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
 | FR-027d | T051-T060; T105-T107 | packages/persistence/src/postgres.ts; packages/persistence/src/workout-lifecycle.ts | tests/postgres/us5.test.ts | CORE EVIDENCE |
 | FR-028 | T061-T071; T097 | packages/domain/src/parser/set-parser.ts; packages/persistence/src/postgres.ts; packages/persistence/src/us4.ts | packages/domain/src/parser/set-parser.test.ts; tests/postgres/us4.test.ts; tests/postgres/postgres-vertical-slice.test.ts | CORE EVIDENCE |
-| FR-029 | T061-T071; T097 | packages/domain/src/parser/set-parser.ts; packages/persistence/src/postgres.ts; packages/persistence/src/us4.ts | packages/domain/src/parser/set-parser.test.ts; tests/postgres/us4.test.ts; tests/postgres/postgres-vertical-slice.test.ts | PARTIAL: Recorded numeric notation works; failed-attempt metadata is not persisted. |
+| FR-029 | T061-T071; T097 | packages/domain/src/parser/set-parser.ts; packages/persistence/src/postgres.ts | packages/domain/src/parser/set-parser.test.ts; tests/postgres/postgres-vertical-slice.test.ts | CORE EVIDENCE (Phase A) |
 | FR-030 | T061-T071; T097 | packages/domain/src/parser/set-parser.ts; packages/persistence/src/postgres.ts; packages/persistence/src/us4.ts | packages/domain/src/parser/set-parser.test.ts; tests/postgres/us4.test.ts; tests/postgres/postgres-vertical-slice.test.ts | CORE EVIDENCE |
 | FR-030a | T061-T071; T097 | packages/domain/src/parser/set-parser.ts; packages/persistence/src/postgres.ts; packages/persistence/src/us4.ts | packages/domain/src/parser/set-parser.test.ts; tests/postgres/us4.test.ts; tests/postgres/postgres-vertical-slice.test.ts | CORE EVIDENCE |
 | FR-030b | T061-T071; T097 | packages/domain/src/parser/set-parser.ts; packages/persistence/src/postgres.ts; packages/persistence/src/us4.ts | packages/domain/src/parser/set-parser.test.ts; tests/postgres/us4.test.ts; tests/postgres/postgres-vertical-slice.test.ts | CORE EVIDENCE |
@@ -154,7 +153,7 @@ Paths are relative to repository root. Test files are direct evidence locations,
 | FR-049c | T090-T101 | packages/persistence/src/us4.ts; packages/domain/src/corrections/correction-command.ts | tests/postgres/us4.test.ts; tests/e2e/us4/history-editor.spec.ts | CORE EVIDENCE |
 | FR-049d | T090-T101 | packages/persistence/src/us4.ts; packages/domain/src/corrections/correction-command.ts | tests/postgres/us4.test.ts; tests/e2e/us4/history-editor.spec.ts | CORE EVIDENCE |
 | FR-049e | T090-T101 | packages/persistence/src/us4.ts; packages/domain/src/corrections/correction-command.ts | tests/postgres/us4.test.ts; tests/e2e/us4/history-editor.spec.ts | CORE EVIDENCE |
-| FR-049f | T090-T101 | packages/persistence/src/us4.ts; packages/domain/src/corrections/correction-command.ts | tests/postgres/us4.test.ts; tests/e2e/us4/history-editor.spec.ts | PARTIAL: Confirmed exercise reorder exists; permanent session sequence reorder is absent. |
+| FR-049f | T090-T101 | packages/persistence/src/workout-selection.ts; packages/persistence/src/us4.ts; packages/domain/src/workouts/start-intent.ts | tests/postgres/phase-a-selection.test.ts; tests/e2e/us2-workout-selection.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-050 | T102-T107; T115 | packages/persistence/src/workout-lifecycle.ts; packages/persistence/src/workout-history-queries.ts; packages/analytics/src/personal-record-service.ts | tests/postgres/us5.test.ts; tests/e2e/us5/workout-lifecycle.spec.ts | CORE EVIDENCE |
 | FR-051 | T102-T107; T115 | packages/persistence/src/workout-lifecycle.ts; packages/persistence/src/workout-history-queries.ts; packages/analytics/src/personal-record-service.ts | tests/postgres/us5.test.ts; tests/e2e/us5/workout-lifecycle.spec.ts | CORE EVIDENCE |
 | FR-052 | T102-T107; T115 | packages/persistence/src/workout-lifecycle.ts; packages/persistence/src/workout-history-queries.ts; packages/analytics/src/personal-record-service.ts | tests/postgres/us5.test.ts; tests/e2e/us5/workout-lifecycle.spec.ts | CORE EVIDENCE |

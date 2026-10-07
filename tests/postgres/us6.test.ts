@@ -15,7 +15,7 @@ pgDescribe("US6 deterministic PostgreSQL analytics and bounded questions", () =>
     await app.migrate(); next = 0;
     const auth = await app.signUp("us6@example.com", "correct horse battery staple"); userId = auth.userId; token = auth.sessionToken;
     await app.setPreferredWeightUnit(userId, "LB"); await app.createRoutine(userId);
-    await send(`link ${await app.createLinkToken(userId)}`); await send("start");
+    await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("start planned");
     workoutId = (await app.activeWorkout(userId))!.id;
     exerciseId = (await app.pool.query("select id from exercise_identities where display_name='Incline Dumbbell Press'")).rows[0].id;
     await send("45 lb x 10,45 lb x 9,45 lb x 8"); await send("done");
@@ -64,8 +64,8 @@ pgDescribe("US6 deterministic PostgreSQL analytics and bounded questions", () =>
     expect((await send("How many chest sets this week?")).body).toContain("No confirmed primary-muscle data");
   });
   it("monthly/frequency exclude incomplete/active/discarded and use workout training date, not a correction timestamp", async () => {
-    await send("start"); await send("80x5"); await send("save incomplete");
-    await send("start"); await send("80x5"); await send("done"); await send("discard");
+    await send("start"); await send("start planned"); await send("80x5"); await send("save incomplete");
+    await send("start"); await send("start planned"); await send("80x5"); await send("done"); await send("discard");
     expect((await app.analytics(token)).monthlyWorkoutCount).toBe(1);
     const first = new Date(); first.setUTCDate(1); first.setUTCHours(0,0,0,0); first.setUTCSeconds(-1);
     await app.pool.query("update workout_sessions set started_at=$1 where id=$2", [first, workoutId]);
@@ -73,7 +73,7 @@ pgDescribe("US6 deterministic PostgreSQL analytics and bounded questions", () =>
     expect(result.frequency[0]?.week).toBeDefined(); await restart(); expect(await app.analytics(token)).toEqual(result);
   });
   it("confirmed aliases use exact history; similar exercise and ambiguous references do not inherit it", async () => {
-    await send("start");
+    await send("start"); await send("start planned");
     mock.enqueue({ schemaVersion: "workout-action.v1", action: { type: "MAP_EXERCISE_ALIAS", alias: "incline press", exerciseRef: "Incline Dumbbell Press" }, confidence: "high", requiresClarification: false, rationaleCodes: [], forbiddenDirectMutation: true });
     await send("call it incline press"); await send("yes");
     expect((await send("What did I incline press last time?")).body).toContain("45 LB each x 10");

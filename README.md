@@ -30,7 +30,7 @@ Use Node 22 LTS (`.nvmrc`). Production routes require `DATABASE_URL` and use Pos
 
 Previous performance uses the latest completed/incomplete occurrence of the exact exercise identity (or confirmed alias), with the same unit and load semantics. PRs are calculated on demand from current non-deleted sets; no PR table or estimated 1RM exists.
 
-`start` shows concise exercise targets and prior performance. `resume` keeps the same workout and exercise. `done` completes fully recorded/skipped work; partial workouts ask for `save completed`, `save incomplete`, `continue`, or `discard`. Empty workouts cannot be saved completed. Off-sequence, incomplete and discarded workouts do not advance the cursor.
+`start`, `let's start`, `gym time`, and `start workout` propose the next cursor-selected workout with its full plan. `start planned` explicitly accepts it. `choose Lower today` proposes an alternative; `rest` dismisses a proposal without changing progression. `resume` preserves an active workout but cannot activate a proposal. `done` completes fully recorded/skipped work; partial workouts ask for `save completed`, `save incomplete`, `continue`, or `discard`. Empty workouts cannot be saved completed. Off-sequence, incomplete and discarded workouts do not advance the cursor.
 
 Apply `packages/persistence/migrations/0003_us5.sql` once to an existing database already migrated through `0002_us4.sql` before starting the updated runtime. The application's `migrate()` method tracks and applies migrations for integration tests/new managed databases. This migration persists pending finish choices and exercise-name snapshots; it does not persist PRs.
 
@@ -68,7 +68,7 @@ The 14 US6 eval fixtures use the mock client. Live Gemini quality evaluation rem
 
 Deletion proposals expire after ten minutes; target changes make confirmation stale. Owner/key uniqueness and the existing per-user transaction lock make requests, concurrent confirmations and retries idempotent. Workout-data deletion soft-deletes recorded sessions/sets and removes their access through history, PR, previous-performance, analytics, bounded questions and export. Configuration stays available. Old exports are revoked and old message replays cannot return removed facts. Account deletion also persists the user tombstone, invalidates sessions, revokes links and consumes outstanding link tokens. Only the exact original-session completed account-deletion receipt can replay; it grants no renewed session or data access.
 
-Use `npm run db:migrate` to apply the ordered migrations through `0006_release_integrity.sql`; do not reapply SQL manually after it is recorded in the ledger. Soft-deleted/audit records remain persisted; physical erasure, backup handling and retention/privacy commitments are not promised by this implementation and still require release decisions. Requests/audit summaries contain IDs, operation/status, timestamps and counts, not unnecessary sensitive payloads. Gemini does not decide or execute data controls.
+Use `npm run db:migrate` to apply the ordered migrations through `0007_core_configuration.sql`; do not reapply SQL manually after it is recorded in the ledger. Soft-deleted/audit records remain persisted; physical erasure, backup handling and retention/privacy commitments are not promised by this implementation and still require release decisions. Requests/audit summaries contain IDs, operation/status, timestamps and counts, not unnecessary sensitive payloads. Gemini does not decide or execute data controls.
 
 ```bash
 # Disposable test database only: these suites reset tables/test schemas.
@@ -78,7 +78,13 @@ TEST_DATABASE_URL=postgresql://user@localhost:5432/workout_test npm run test:us7
 
 US7 evidence describes that implementation pass. See Release Review for subsequent hardening and unresolved release blockers.
 
-## Release Review
+## Phase A Self-Service Setup
+
+Apply ordered migrations with `npm run db:migrate`, then open `/onboarding` to create an account, save preferred unit/display name, and configure named routines, sessions, known/confirmed custom exercises, planned sets/reps/order and frequency/days. `/routines` manages saved configuration, aliases/rename, link tokens and workout proposal/selection. Explicit replacement requires confirmation; permanent sequence reorder revalidates versions and preserves the next cursor identity and historical snapshots.
+
+Use `TEST_DATABASE_URL=postgresql://user@localhost:5432/workout_test npm run test:phase-a:web` for actual UI/API onboarding and selection acceptance. The database must be disposable. Signed inbound fixtures prove identity linking and workout behavior without live Meta calls; actual outbound delivery and GET verification remain Phase B work. Existing authenticated sessions work; no new returning-user password sign-in scope was added.
+
+## Release Evidence
 
 Hardening evidence and unresolved release blockers are in
 `specs/001-whatsapp-workout-companion/validation-results.md`,

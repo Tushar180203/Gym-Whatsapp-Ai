@@ -28,6 +28,7 @@
     "test:us6:web": "playwright test -c tests/e2e/us6/playwright.config.ts",
     "test:us7:web": "playwright test -c tests/e2e/us7/playwright.config.ts",
     "test:release:web": "playwright test -c tests/e2e/release/playwright.config.ts",
+    "test:phase-a:web": "playwright test -c tests/e2e/phase-a/playwright.config.ts",
     "check:runtime": "node --experimental-strip-types scripts/check-runtime.mjs",
     "db:migrate": "tsx scripts/migrate.ts"
   },

@@ -28,7 +28,7 @@ test("real HTTP signup/link/webhook/log/resume/finish/history with exact persist
     const response = await request.post("/api/webhooks/whatsapp", { data: raw, headers: { "content-type": "application/json", "x-hub-signature-256": adapter.sign(raw) } });
     expect(response.status()).toBe(200); return response.json();
   }
-  await send(`link ${token}`); await send("start"); await send("45 lb x 10", "single-set"); await send("45 lb x 10", "single-set");
+  await send(`link ${token}`); await send("start"); await send("start planned"); await send("45 lb x 10", "single-set"); await send("45 lb x 10", "single-set");
   const active = await (await request.get("/api/workouts/active")).json();
   const resume = await request.post(`/api/workouts/${active.id}/resume`); expect(resume.status()).toBe(200);
   expect((await resume.json()).body).toContain("Resumed Upper");
@@ -42,7 +42,7 @@ test("real HTTP signup/link/webhook/log/resume/finish/history with exact persist
   expect(await (await request.post(`/api/workouts/${active.id}/finish`, { data })).json()).toEqual(summary);
   const history = await (await request.get("/api/workouts/history")).json(); expect(history).toHaveLength(1); expect(history[0].sets).toHaveLength(1);
   const detail = await (await request.get(`/api/workouts/${active.id}`)).json(); expect(detail.summary).toContain("1 exercises, 1 sets");
-  await send("start"); await send("add Incline Dumbbell Press today");
+  await send("start"); await send("start planned"); await send("add Incline Dumbbell Press today");
   expect((await app.previousPerformance(userId, "Incline Dumbbell Press", "LB", "PER_HAND_PER_SIDE"))?.[0]).toMatchObject({ loadValue: 45, reps: 10 });
   expect((await app.personalRecords(userId, "Incline Dumbbell Press", "LB", "PER_HAND_PER_SIDE")).highestLoad?.loadValue).toBe(45);
 });

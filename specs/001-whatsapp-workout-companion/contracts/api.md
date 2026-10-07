@@ -9,6 +9,10 @@ This contract describes product interfaces, not implementation code. All endpoin
 - `GET /api/profile`: returns profile and preferences.
 - `PATCH /api/profile`: updates minimal workout-tracking preferences such as preferred weight unit.
 
+PATCH accepts strict `{ preferredWeightUnit: "KG" | "LB", displayName?: string | null }`.
+The approved UserProfile displayName is persisted and returned, preserved when omitted, and cleared by null.
+Unknown/owner fields are rejected; the authenticated session supplies the owner.
+
 ## WhatsApp Linking
 
 - `POST /api/whatsapp/link-token`: creates a short-lived link token/code.
@@ -28,6 +32,9 @@ Rules:
 - All routine resources are scoped by owner.
 - Editing routine templates affects future sessions only.
 - Completed workout history is never rewritten by routine edits.
+- POST/PATCH configuration is `{ name, schedule?: { intendedWorkoutsPerWeek?, plannedDays? }, sessions: [{ id?, name, exercises: [{ exerciseIdentityId, plannedSetCount, repTargetMin, repTargetMax? }] }] }`. Days are MON through SUN; equal min/max represents an exact target. Omitted max uses min. Positive counts/ranges and existing session ownership are validated locally.
+- PATCH requires `expectedVersion`. Changing existing session order/membership also requires explicit `confirmSequenceChange: true`; exact sequence reordering uses the existing versioned PendingConfirmation command policy. The cursor retains its next identity when present; planned calendar metadata never skips it. Existing snapshots and referenced historical planned rows remain unchanged.
+- DELETE requires `{ expectedVersion, confirm: true }`, archives the owned routine, and refuses an active/proposed/paused workout. No history is deleted.
 
 ## Exercises And Aliases
 
@@ -43,6 +50,9 @@ Rules:
 - Custom exercise identity remains stable across rename and alias changes.
 - Merges require explicit confirmation.
 - Confirmed primary-muscle classification controls MVP muscle analytics.
+- Custom POST accepts `{ name, defaultLoadSemantics, confirm: true }`; alias POST accepts `{ alias, confirm: true }`. Both use the existing confirmation framework. Conflicting aliases return clarification, not a new identity or implicit merge.
+- Rename PATCH accepts `{ displayName, expectedVersion }` for a private owned identity, preserving its ID and history. Global definitions cannot be renamed by a user.
+- Merge POST accepts `{ fromExerciseId, toExerciseId, confirm: true }` for two distinct owned identities and reuses the existing explicit merge confirmation framework. No automatic merge is performed.
 - Classification PATCH accepts `{ classifications: [{ muscleGroup, role, status }] }` (up to 20 unique muscle/role rows). Roles are `PRIMARY`/`SECONDARY`; statuses are `CONFIRMED`/`UNCERTAIN`/`UNCLASSIFIED`. This replaces only the authenticated user's classifications for an accessible exact identity; foreign custom identity IDs return not found. Manual confirmation, not an AI hint, controls inclusion.
 
 ## Workout Sessions And Sets
@@ -64,6 +74,9 @@ Rules:
 - At most one active workout per user.
 - Set edits and deletes apply only after ownership and correction rules pass.
 - Completed-history edits recalculate PR and analytics outputs.
+- Start POST accepts `{ kind, idempotencyKey, routineRef?, sessionRef?, workoutId?, expectedVersion?, confirmationId? }`. Kinds are START, ACCEPT, CHOOSE, REST, REPLACE, CONFIRM. START proposes (PROPOSED), ACCEPT explicitly activates the current proposal, CHOOSE proposes an exact alternative for today, REST dismisses a proposal without advancing the cursor. Multiple plausible routines/sessions clarify without creating a workout. The response includes the full planned list and current owned workout/version.
+- REPLACE requires the exact active workout/version and selected session. It creates an existing PendingConfirmation; CONFIRM requires that owner's exact confirmation ID and revalidates versions before atomic replacement. AI START_WORKOUT cannot accept or replace a session. PATCH workout uses the same selection contract with the path's owned workout ID/version.
+- Set POST accepts `{ notation, expectedVersion, idempotencyKey }`, requires an active owned workout and profile unit, and uses the deterministic parser. DELETE accepts `{ expectedVersion, idempotencyKey }` to propose removal, then a new key plus `{ confirm: true, confirmationId }` to resolve it. Foreign IDs and stale versions cannot authorize mutations; completed command retries reuse prior results.
 
 ## Analytics And History
 

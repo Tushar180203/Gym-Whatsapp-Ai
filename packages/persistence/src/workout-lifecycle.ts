@@ -34,6 +34,7 @@ export class WorkoutLifecycle {
 
   async resume(workoutId?: string): Promise<string> {
     const workout = await this.active(workoutId);
+    if (workout.status === "PROPOSED") return "Workout proposed. Start planned workout, choose another workout, or rest.";
     if (workout.status !== "ACTIVE" || workout.completion_choice_pending) await this.db.query("update workout_sessions set status='ACTIVE',started_at=coalesce(started_at,now()),completion_choice_pending=false,version=version+1 where id=$1 and user_id=$2", [workout.id, this.userId]);
     return `Resumed ${workout.name}\n${await this.context()}`.trim();
   }
@@ -75,10 +76,10 @@ export class WorkoutLifecycle {
       // A stale/off-sequence completion cannot reset the normal rotation.
       const cursor = (await this.db.query("select next_session_template_id from routine_sequence_cursors where routine_id=$1 and user_id=$2 for update", [workout.routine_id, this.userId])).rows[0];
       if (cursor?.next_session_template_id === workout.session_template_id) {
-        const templates = (await this.db.query("select id,sequence_index from workout_session_templates where routine_id=$1 order by sequence_index", [workout.routine_id])).rows;
+        const templates = (await this.db.query("select id,sequence_index from workout_session_templates where routine_id=$1 and archived_at is null order by sequence_index", [workout.routine_id])).rows;
         const index = templates.findIndex(row => row.id === workout.session_template_id);
         const next = templates[(index + 1) % templates.length];
-        if (next) await this.db.query("update routine_sequence_cursors set next_session_template_id=$1,cursor_sequence_index=$2 where routine_id=$3 and user_id=$4", [next.id, next.sequence_index, workout.routine_id, this.userId]);
+        if (next) await this.db.query("update routine_sequence_cursors set next_session_template_id=$1,cursor_sequence_index=$2,version=version+1 where routine_id=$3 and user_id=$4", [next.id, next.sequence_index, workout.routine_id, this.userId]);
       }
     }
     const body = status === "DISCARDED" ? `${workout.name}: discarded` : await this.summary(workout.id);

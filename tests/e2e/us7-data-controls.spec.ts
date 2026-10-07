@@ -14,7 +14,7 @@ test.beforeEach(async ({ context }) => {
     const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "us7-browser" }, messages: [{ id: `web-${next++}`, from: "15555550234", text: { body: text } }] } }] }] });
     const adapter = new WhatsAppInboundAdapter("us7-web-secret"); await app.processInbound(adapter.normalize(raw, adapter.sign(raw))[0]!);
   }
-  await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("45 lb x 10,45 lb x 9,45 lb x 8"); await send("done");
+  await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("start planned"); await send("45 lb x 10,45 lb x 9,45 lb x 8"); await send("done");
   await context.addCookies([{ name: "workout_session", value: token, url: "http://127.0.0.1:3108", httpOnly: true, sameSite: "Lax" }]);
 });
 test.afterEach(async () => { await app?.close(); });

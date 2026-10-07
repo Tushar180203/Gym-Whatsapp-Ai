@@ -13,7 +13,7 @@ pgDescribe("US7 PostgreSQL portable export and confirmed data control", () => {
     app = new PostgresVerticalSliceApp({ connectionString: scoped }); await app.migrate(); next = 0;
     owner = await app.signUp("us7-owner@example.com", "correct horse battery staple"); other = await app.signUp("us7-other@example.com", "correct horse battery staple");
     for (const user of [owner, other]) { await app.setPreferredWeightUnit(user.userId, "LB"); await app.createRoutine(user.userId); }
-    await send(`link ${await app.createLinkToken(owner.userId)}`); await send("start"); workoutId = (await app.activeWorkout(owner.userId))!.id;
+    await send(`link ${await app.createLinkToken(owner.userId)}`); await send("start"); await send("start planned"); workoutId = (await app.activeWorkout(owner.userId))!.id;
     await send("45 lb x 10,45 lb x 9,45 lb x 8", "original-log"); await send("done");
     exerciseId = (await app.pool.query("select exercise_identity_id from workout_sets where user_id=$1 limit 1", [owner.userId])).rows[0].exercise_identity_id;
     await app.classifyExercise(owner.sessionToken, exerciseId, { classifications: [{ muscleGroup: "Chest", status: "CONFIRMED", role: "PRIMARY" }] });
@@ -101,11 +101,11 @@ pgDescribe("US7 PostgreSQL portable export and confirmed data control", () => {
     const answer = await send("What's my best incline?", "old-history"); expect(answer.body).toContain("45 LB");
     const deletion = await request(); await app.confirmDeletion(owner.sessionToken, deletion.id, { confirm: true });
     expect((await send("What's my best incline?", "old-history")).body).toBe("Previous workout data is no longer available.");
-    await send("start"); expect((await send("45 lb x 10,45 lb x 9,45 lb x 8", "original-log")).reused).toBe(true);
+    await send("start"); await send("start planned"); expect((await send("45 lb x 10,45 lb x 9,45 lb x 8", "original-log")).reused).toBe(true);
     expect((await app.pool.query("select id from workout_sets where user_id=$1 and status='RECORDED'", [owner.userId])).rows).toHaveLength(0);
   });
   it("deletes active sessions too, preserves routine configuration, and uses approved discarded lifecycle state", async () => {
-    await send("start"); await send("80 lb x 5"); const deletion = await request();
+    await send("start"); await send("start planned"); await send("80 lb x 5"); const deletion = await request();
     const result = await app.confirmDeletion(owner.sessionToken, deletion.id, { confirm: true });
     expect(result.auditSummary.workoutsAffected).toBe(2); expect(await app.activeWorkout(owner.userId)).toBeNull();
     const rows = (await app.pool.query("select status,data_deleted_at from workout_sessions where user_id=$1", [owner.userId])).rows;

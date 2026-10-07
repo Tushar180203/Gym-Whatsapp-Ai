@@ -10,3 +10,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ worko
     return { body, history: await productionApp().historyDetails(requestSession(request), params.workoutId) };
   });
 }
+export function DELETE(request: Request, context: { params: Promise<{ workoutId: string; setId: string }> }) {
+  return apiResponse(request, async () => { const { workoutId, setId } = await context.params; return productionApp().deleteWebSet(requestSession(request), workoutId, setId, await request.json()); });
+}

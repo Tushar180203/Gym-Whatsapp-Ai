@@ -7,6 +7,7 @@ export type Us4Action = ProposedAction
   | { type: "LOG_CONTEXT_SETS"; exerciseRef: string; setText: string }
   | { type: "DELETE_GROUP"; kind: "EXERCISE" | "WORKOUT" | "HISTORY"; reference: string }
   | { type: "MERGE_IDENTITIES"; fromExerciseRef: string; toExerciseRef: string };
+export type ReplaceWorkoutAction = { type: "REPLACE_WORKOUT"; sessionRef: string };
 
 export function parseUs4Message(text: string): Us4Action | undefined {
   const value = text.trim();
@@ -14,6 +15,8 @@ export function parseUs4Message(text: string): Us4Action | undefined {
   if (/^delete last set$/i.test(value)) return { type: "DELETE_SET", targetRef: "last-active-set" };
   if (/^skip (?:this |a )?set$/i.test(value)) return { type: "SKIP_SET" };
   let match = value.match(/^actually (?:that|it) was (\d+)$/i);
+  const sequence = value.match(/^(?:from now on|permanently) (?:move|reorder) session (.+?) to (first|\d+)$/i);
+  if (sequence) return { type: "UPDATE_ROUTINE_REQUEST", scope: "PERMANENT_ROUTINE", requestedChange: { operation: "REORDER_SESSION", sessionRef: sequence[1]!, newOrderRef: sequence[2]! } };
   if (match) return { type: "CORRECT_SET", replacement: { reps: Number(match[1]) } };
   match = value.match(/^(.+?) set (\d+) was actually (\d+)$/i);
   if (match) {

@@ -15,7 +15,7 @@ test.beforeEach(async ({ context }) => {
     const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "us6-web" }, messages: [{ id: `web-${next++}`, from: "15555550999", text: { body: text } }] } }] }] });
     const adapter = new WhatsAppInboundAdapter("us6-web-secret"); await app.processInbound(adapter.normalize(raw, adapter.sign(raw))[0]!);
   }
-  await send(`link ${await app.createLinkToken(auth.userId)}`); await send("start");
+  await send(`link ${await app.createLinkToken(auth.userId)}`); await send("start"); await send("start planned");
   workoutId = (await app.activeWorkout(auth.userId))!.id;
   await send("45 lb x 10,45 lb x 9,45 lb x 8"); await send("done");
   exerciseId = (await app.pool.query("select exercise_identity_id from workout_sets where workout_session_id=$1 limit 1", [workoutId])).rows[0].exercise_identity_id;

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import type { LoadSemantics, NormalizedWhatsAppMessage, WeightUnit } from "../../contracts/src/index.js";
 import { DomainError, sha256 } from "./store.js";
@@ -19,6 +19,10 @@ import { answerHistoryQuestion, coachingBoundary, type HistoryAction, type Histo
 import { ProposedActionSchema } from "../../contracts/src/ai/actions.js";
 import { isCoachingQuestion, parseHistoryQuestion } from "../../domain/src/messaging/history-query-parser.js";
 import type { SafeEvent } from "../../domain/src/observability/events.js";
+import { Configuration } from "./configuration.js";
+import { WorkoutSelection } from "./workout-selection.js";
+import { parseStartIntent, type StartChoice } from "../../domain/src/workouts/start-intent.js";
+import { z } from "zod";
 
 export type PostgresSliceConfig = {
   connectionString: string;
@@ -67,7 +71,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql", "0007_core_configuration.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -132,43 +136,101 @@ export class PostgresVerticalSliceApp {
     return { preferredWeightUnit: row.preferred_weight_unit, displayName: row.display_name };
   }
 
+  async configure<T>(sessionToken: string, handler: (configuration: Configuration) => Promise<T>): Promise<T> {
+    return this.ownerTransaction(sessionToken, (client, userId) => handler(new Configuration(client, userId)));
+  }
+
+  private async ownerTransaction<T>(sessionToken: string, handler: (client: PoolClient, userId: string) => Promise<T>): Promise<T> {
+    const userId = await this.currentUser(sessionToken), client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+      if (!(await client.query("select u.id from users u join auth_sessions s on s.user_id=u.id where u.id=$1 and u.deleted_at is null and s.token_hash=$2 and s.invalidated_at is null and s.expires_at>clock_timestamp()", [userId, sha256(sessionToken)])).rows.length) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      const result = await handler(client, userId);
+      await client.query("commit"); return result;
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
+  }
+
+  async recordWebSets(sessionToken: string, workoutId: string, input: unknown) {
+    const value = z.object({ notation: z.string().min(1).max(8192), expectedVersion: z.number().int().positive(), idempotencyKey: z.string().min(1).max(160) }).strict().parse(input);
+    return this.ownerTransaction(sessionToken, async (client, userId) => {
+      const workout = (await client.query("select id,version,status from workout_sessions where id=$1 and user_id=$2 and data_deleted_at is null", [workoutId, userId])).rows[0];
+      if (!workout) throw new DomainError("Workout not found", "NOT_FOUND");
+      const key = `web:sets:${workoutId}:${value.idempotencyKey}`;
+      if ((await client.query("select id from command_executions where user_id=$1 and idempotency_key=$2 and status='COMPLETED'", [userId, key])).rows.length) return { body: "Logged set", reused: true };
+      if (workout.status !== "ACTIVE") throw new DomainError("Workout is not active", "NO_ACTIVE_WORKOUT");
+      if (workout.version !== value.expectedVersion) throw new DomainError("Workout changed", "STALE_VERSION");
+      await this.logSets(client, userId, null, key, value.notation);
+      return { body: "Logged set", reused: false };
+    });
+  }
+
+  async deleteWebSet(sessionToken: string, workoutId: string, setId: string, input: unknown) {
+    const value = z.object({ expectedVersion: z.number().int().positive(), idempotencyKey: z.string().min(1).max(160), confirmationId: z.string().optional(), confirm: z.literal(true).optional() }).strict().parse(input);
+    return this.ownerTransaction(sessionToken, async (client, userId) => {
+      const target = (await client.query("select s.status,w.version from workout_sets s join workout_sessions w on w.id=s.workout_session_id and w.user_id=s.user_id where s.id=$1 and s.workout_session_id=$2 and s.user_id=$3 and w.data_deleted_at is null", [setId, workoutId, userId])).rows[0];
+      if (!target) throw new DomainError("Set not found", "NOT_FOUND");
+      const key = `web:delete:${setId}:${value.idempotencyKey}`;
+      const prior = (await client.query("select result_summary from command_executions where user_id=$1 and idempotency_key=$2 and status='COMPLETED'", [userId, key])).rows[0];
+      if (prior) return prior.result_summary;
+      const commands = new Us4Commands(client, userId, null, "WEB"); let body: string;
+      if (value.confirm) {
+        if (!value.confirmationId || !(await client.query("select id from pending_confirmations where id=$1 and user_id=$2 and action_type='DELETE_SET' and proposed_action->'args'->>'targetId'=$3", [value.confirmationId, userId, setId])).rows.length) throw new DomainError("Confirmation not found", "NOT_FOUND");
+        const latest = (await client.query("select id from pending_confirmations where user_id=$1 order by created_at desc,id desc limit 1", [userId])).rows[0];
+        if (latest?.id !== value.confirmationId) throw new DomainError("Confirmation changed", "STALE_VERSION");
+        body = (await commands.resolveConfirmation("confirm"))!;
+      } else {
+        if (target.status !== "RECORDED") throw new DomainError("Set not found", "NOT_FOUND");
+        if (target.version !== value.expectedVersion) throw new DomainError("Workout changed", "STALE_VERSION");
+        body = await commands.dispatch({ type: "DELETE_SET", targetRef: setId }, "delete this set", `${key}:request`);
+      }
+      const pending = (await client.query("select id from pending_confirmations where user_id=$1 and action_type='DELETE_SET' and status='PENDING' and proposed_action->'args'->>'targetId'=$2", [userId, setId])).rows[0];
+      const result = { body, ...(pending ? { confirmationId: pending.id } : {}) };
+      await client.query("insert into command_executions(id,user_id,command_type,idempotency_key,status,result_summary,applied_at) values($1,$2,'DELETE_SET_REQUEST',$3,'COMPLETED',$4,clock_timestamp())", [randomUUID(), userId, key, JSON.stringify(result)]);
+      return result;
+    });
+  }
+
   async createRoutine(userId: string): Promise<string> {
     const routineId = id("routine");
     const upperTemplateId = id("template");
     const lowerTemplateId = id("template");
     const exerciseId = id("exercise");
     const lowerExerciseId = id("exercise");
-    await this.pool.query("begin");
+    const client = await this.pool.connect();
     try {
-      await this.pool.query(`insert into routines (id, user_id, name) values ($1, $2, 'Upper Lower')`, [
+      await client.query("begin");
+      await client.query(`insert into routines (id, user_id, name) values ($1, $2, 'Upper Lower')`, [
         routineId,
         userId
       ]);
-      await this.pool.query(
+      await client.query(
         `insert into exercise_identities (id, owner_user_id, display_name, default_load_semantics)
          values ($1, $2, 'Incline Dumbbell Press', 'PER_HAND_PER_SIDE'), ($3, $2, 'Squat', 'UNSPECIFIED_DEFAULT')`,
         [exerciseId, userId, lowerExerciseId]
       );
-      await this.pool.query(
+      await client.query(
         `insert into workout_session_templates (id, routine_id, name, sequence_index)
          values ($1, $3, 'Upper', 0), ($2, $3, 'Lower', 1)`,
         [upperTemplateId, lowerTemplateId, routineId]
       );
-      await this.pool.query(
+      await client.query(
         `insert into planned_exercises (id, session_template_id, exercise_identity_id, order_index, planned_set_count, rep_target_min, rep_target_max)
          values ($1, $2, $3, 0, 3, 8, 10), ($4, $5, $6, 0, 3, 5, 5)`,
         [id("planned"), upperTemplateId, exerciseId, id("planned"), lowerTemplateId, lowerExerciseId]
       );
-      await this.pool.query(
+      await client.query(
         `insert into routine_sequence_cursors (id, routine_id, user_id, next_session_template_id, cursor_sequence_index)
          values ($1, $2, $3, $4, 0)`,
         [id("cursor"), routineId, userId, upperTemplateId]
       );
-      await this.pool.query("commit");
+      await client.query("commit");
       return routineId;
     } catch (error) {
-      await this.pool.query("rollback");
+      await client.query("rollback");
       throw error;
+    } finally {
+      client.release();
     }
   }
 
@@ -179,6 +241,14 @@ export class PostgresVerticalSliceApp {
       [id("linktoken"), userId, sha256(raw)]
     );
     return raw;
+  }
+
+  async createWebLinkToken(sessionToken: string) {
+    return this.ownerTransaction(sessionToken, async (client, userId) => {
+      const raw = token();
+      const record = (await client.query("insert into account_link_tokens(id,user_id,token_hash,expires_at) values($1,$2,$3,clock_timestamp()+interval '10 minutes') returning expires_at", [id("linktoken"), userId, sha256(raw)])).rows[0];
+      return { token: raw, expiresAt: record.expires_at.toISOString() as string };
+    });
   }
 
   async processInbound(message: NormalizedWhatsAppMessage, options: { crashAfterCommandBeforeOutbound?: boolean } = {}) {
@@ -298,9 +368,9 @@ export class PostgresVerticalSliceApp {
     } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
   }
 
-  async activeWorkout(userId: string): Promise<{ id: string; status: string; name: string } | null> {
-    const result = await this.pool.query<{ id: string; status: string; name: string }>(
-      `select id, status, name from workout_sessions where user_id = $1 and status in ('PROPOSED', 'ACTIVE', 'PAUSED') limit 1`,
+  async activeWorkout(userId: string): Promise<{ id: string; status: string; name: string; version: number } | null> {
+    const result = await this.pool.query<{ id: string; status: string; name: string; version: number }>(
+      `select id, status, name, version from workout_sessions where user_id = $1 and status in ('PROPOSED', 'ACTIVE', 'PAUSED') limit 1`,
       [userId]
     );
     return result.rows[0] ?? null;
@@ -413,6 +483,44 @@ export class PostgresVerticalSliceApp {
     }
   }
 
+  async selectWorkout(sessionToken: string, input: unknown) {
+    const value = z.object({ kind: z.enum(["START", "ACCEPT", "CHOOSE", "REST", "REPLACE", "CONFIRM"]), routineRef: z.string().min(1).optional(), sessionRef: z.string().min(1).optional(), workoutId: z.string().optional(), expectedVersion: z.number().int().positive().optional(), confirmationId: z.string().optional(), idempotencyKey: z.string().min(1).max(160) }).strict().parse(input);
+    const userId = await this.currentUser(sessionToken), client = await this.pool.connect();
+    try {
+      await client.query("begin"); await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+      if (!(await client.query("select u.id from users u join auth_sessions s on s.user_id=u.id where u.id=$1 and u.deleted_at is null and s.token_hash=$2 and s.invalidated_at is null and s.expires_at>clock_timestamp()", [userId, sha256(sessionToken)])).rows.length) throw new DomainError("Unauthenticated", "UNAUTHENTICATED");
+      const key = `web:selection:${value.idempotencyKey}`;
+      const prior = (await client.query("select result_summary from command_executions where user_id=$1 and idempotency_key=$2 and status='COMPLETED'", [userId, key])).rows[0];
+      if (prior) { await client.query("commit"); return prior.result_summary; }
+      const selection = new WorkoutSelection(client, userId), commands = new Us4Commands(client, userId, null, "WEB");
+      if (value.workoutId) {
+        const active = await selection.active();
+        if (!active || active.id !== value.workoutId) throw new DomainError("Workout not found", "NOT_FOUND");
+        if (value.expectedVersion !== active.version) throw new DomainError("Workout changed", "STALE_VERSION");
+      }
+      let body: string;
+      if (value.kind === "CONFIRM") {
+        if (!value.confirmationId || !(await client.query("select id from pending_confirmations where id=$1 and user_id=$2 and action_type='REPLACE_WORKOUT'", [value.confirmationId, userId])).rows.length) throw new DomainError("Confirmation not found", "NOT_FOUND");
+        const latest = (await client.query("select id from pending_confirmations where user_id=$1 order by created_at desc,id desc limit 1", [userId])).rows[0];
+        if (latest?.id !== value.confirmationId) throw new DomainError("Confirmation changed", "STALE_VERSION");
+        body = (await commands.resolveConfirmation("confirm"))!;
+      } else if (value.kind === "REPLACE") {
+        if (!value.sessionRef || !value.workoutId || value.expectedVersion === undefined) throw new DomainError("Choose the exact active workout and replacement", "INVALID_REPLACEMENT");
+        body = await commands.dispatch({ type: "REPLACE_WORKOUT", sessionRef: value.sessionRef }, `replace workout with ${value.sessionRef}`, `${key}:replace`);
+      } else if (value.kind === "CHOOSE") {
+        if (!value.sessionRef) throw new DomainError("Choose a session", "INVALID_SELECTION");
+        body = await selection.choose(value.sessionRef);
+      } else if (value.kind === "ACCEPT") body = await selection.accept();
+      else if (value.kind === "REST") body = await selection.rest();
+      else body = await selection.start(value.routineRef, value.sessionRef);
+      const workout = await selection.active();
+      const pending = (await client.query("select id from pending_confirmations where user_id=$1 and status='PENDING' and action_type='REPLACE_WORKOUT'", [userId])).rows[0];
+      const result = { body, workout: workout ? { id: workout.id, name: workout.name, status: workout.status, version: workout.version } : null, ...(pending ? { confirmationId: pending.id } : {}) };
+      await client.query("insert into command_executions(id,user_id,command_type,idempotency_key,status,result_summary,applied_at) values($1,$2,'WORKOUT_SELECTION',$3,'COMPLETED',$4,clock_timestamp())", [randomUUID(), userId, key, JSON.stringify(result)]);
+      await client.query("commit"); return result;
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
+  }
+
   private async upsertInbound(client: PoolClient, message: NormalizedWhatsAppMessage) {
     const result = await client.query<{
       id: string;
@@ -498,6 +606,12 @@ export class PostgresVerticalSliceApp {
     const lower = text.trim().toLowerCase();
     if (lower.startsWith("link ")) return "WhatsApp linked";
     const us4 = new Us4Commands(client, userId, inboundId);
+    const choice = parseStartIntent(text);
+    if (choice) {
+      const selection = new WorkoutSelection(client, userId);
+      if (choice.kind === "REPLACE") return us4.dispatch({ type: "REPLACE_WORKOUT", sessionRef: choice.sessionRef }, text, `${inboundId}:replace`);
+      return this.applyStartChoice(selection, choice);
+    }
     const us4Result = await handleDeterministicUs4Message(text, `${inboundId}:us4`, us4);
     const lifecycle = new WorkoutLifecycle(client, userId);
     const withContext = async (body: string) => {
@@ -505,12 +619,6 @@ export class PostgresVerticalSliceApp {
       return context ? `${body}\n${context}` : body;
     };
     if (us4Result !== undefined) return withContext(us4Result);
-    if (lower === "start") {
-      const active = (await client.query("select name from workout_sessions where user_id=$1 and status in ('ACTIVE','PAUSED','PROPOSED')", [userId])).rows[0];
-      if (active) return `${active.name} is already active. Resume, finish, save incomplete, discard, or replace?`;
-      await this.startWorkout(client, userId);
-      return `Started workout\n${await lifecycle.context()}`.trim();
-    }
     if (isResumeIntent(text)) return lifecycle.resume();
     const completion = parseCompletionIntent(text);
     if (completion) return lifecycle.finish(`${inboundId}:finish`, completion);
@@ -543,6 +651,11 @@ export class PostgresVerticalSliceApp {
       if (validated.requiresClarification) return validated.clarificationQuestion ?? "Please clarify the request.";
       if (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS") return answerHistoryQuestion(await new AnalyticsQueries(client, userId).snapshot(), validated.action);
       if (validated.action.type === "UNKNOWN") return coachingBoundary;
+      if (validated.action.type === "START_WORKOUT") return new WorkoutSelection(client, userId).start(validated.action.routineRef, validated.action.sessionRef);
+      if (validated.action.type === "CHANGE_SESSION") {
+        if (validated.action.scope !== "SESSION_ONLY") return "Today only or update your routine?";
+        return new WorkoutSelection(client, userId).choose(validated.action.sessionRef);
+      }
       if (validated.action.type === "RESUME_WORKOUT") return lifecycle.resume(validated.action.workoutRef);
       if (validated.action.type === "FINISH_WORKOUT") {
         // A model-supplied completion choice is not evidence of explicit user consent.
@@ -555,68 +668,23 @@ export class PostgresVerticalSliceApp {
     return "Logged set";
   }
 
-  private async startWorkout(client: PoolClient, userId: string): Promise<void> {
-    if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("User unavailable", "UNAUTHORIZED");
-    const active = await client.query(`select id from workout_sessions where user_id = $1 and status in ('PROPOSED', 'ACTIVE', 'PAUSED')`, [
-      userId
-    ]);
-    if (active.rows[0]) return;
-    const cursor = await client.query<{ routine_id: string; next_session_template_id: string }>(
-      `select routine_id, next_session_template_id from routine_sequence_cursors where user_id = $1 limit 1`,
-      [userId]
-    );
-    const row = cursor.rows[0];
-    if (!row) throw new DomainError("No routine", "NO_ROUTINE");
-    const template = await client.query<{ name: string }>(`select name from workout_session_templates where id = $1`, [
-      row.next_session_template_id
-    ]);
-    const workoutId = id("workout");
-    const planned = await client.query<{
-      id: string;
-      exercise_identity_id: string;
-      order_index: number;
-      planned_set_count: number;
-      rep_target_min: number;
-      rep_target_max: number;
-    }>(
-      `select * from planned_exercises where session_template_id = $1 and removed_at is null order by order_index`,
-      [row.next_session_template_id]
-    );
-    await client.query(
-      `insert into workout_sessions
-       (id, user_id, routine_id, session_template_id, template_snapshot, name, status, sequence_progression_policy, started_at)
-       values ($1, $2, $3, $4, $5, $6, 'ACTIVE', 'ADVANCE_NORMAL_SEQUENCE', now())`,
-      [workoutId, userId, row.routine_id, row.next_session_template_id, JSON.stringify(planned.rows), template.rows[0]!.name]
-    );
-    for (const plannedExercise of planned.rows) {
-      const sessionExerciseId = id("sexercise");
-      await client.query(
-        `insert into session_exercises
-         (id, workout_session_id, exercise_identity_id, source_planned_exercise_id, order_index, status, planned_set_count_snapshot, rep_target_min_snapshot, rep_target_max_snapshot)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [
-          sessionExerciseId,
-          workoutId,
-          plannedExercise.exercise_identity_id,
-          plannedExercise.id,
-          plannedExercise.order_index,
-          plannedExercise.order_index === planned.rows[0]?.order_index ? "IN_PROGRESS" : "PLANNED",
-          plannedExercise.planned_set_count,
-          plannedExercise.rep_target_min,
-          plannedExercise.rep_target_max
-        ]
-      );
-      if (plannedExercise.order_index === planned.rows[0]?.order_index) {
-        await client.query(`update workout_sessions set active_session_exercise_id = $1 where id = $2`, [
-          sessionExerciseId,
-          workoutId
-        ]);
-      }
-    }
-    await client.query("update session_exercises se set exercise_name_snapshot=e.display_name from exercise_identities e where se.exercise_identity_id=e.id and se.workout_session_id=$1", [workoutId]);
+  private applyStartChoice(selection: WorkoutSelection, choice: Exclude<StartChoice, { kind: "REPLACE" }>): Promise<string> {
+    if (choice.kind === "ACCEPT") return selection.accept();
+    if (choice.kind === "CHOOSE") return selection.choose(choice.sessionRef);
+    if (choice.kind === "REST") return selection.rest();
+    return selection.start(choice.routineRef, choice.sessionRef);
   }
 
-  private async logSets(client: PoolClient, userId: string, inboundId: string, commandKey: string, text: string): Promise<void> {
+  private async startWorkout(client: PoolClient, userId: string): Promise<void> {
+    if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("User unavailable", "UNAUTHORIZED");
+    const selection = new WorkoutSelection(client, userId);
+    if (await selection.active()) return;
+    const target = await selection.target();
+    if ("clarification" in target) throw new DomainError(target.clarification, "AMBIGUOUS_WORKOUT");
+    await selection.create(target.template.id, "ACTIVE");
+  }
+
+  private async logSets(client: PoolClient, userId: string, inboundId: string | null, commandKey: string, text: string): Promise<void> {
     if (!hasSetNotation(text)) throw new DomainError("No deterministic set notation", "NO_SET_NOTATION");
     const workout = await client.query<{ id: string; active_session_exercise_id: string }>(
       `select id, active_session_exercise_id from workout_sessions where user_id = $1 and status = 'ACTIVE'`,
@@ -635,6 +703,7 @@ export class PostgresVerticalSliceApp {
       `select preferred_weight_unit from user_profiles where user_id = $1`,
       [userId]
     );
+    if (!profile.rows[0]) throw new DomainError("Configure your preferred weight unit before logging sets", "PREFERRED_UNIT_REQUIRED");
     const previous = await client.query<{ load_value: string; weight_unit: WeightUnit; load_semantics: LoadSemantics }>(
       `select load_value, weight_unit, load_semantics from workout_sets where session_exercise_id = $1 and status='RECORDED' order by set_index desc limit 1`,
       [active.active_session_exercise_id]

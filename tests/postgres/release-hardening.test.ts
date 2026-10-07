@@ -15,7 +15,7 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
     interpret.mockReset(); app = new PostgresVerticalSliceApp({ connectionString: scoped, interpreter: { interpret } }); await app.migrate();
     owner = await app.signUp("release-owner@example.com", "correct horse battery staple"); other = await app.signUp("release-other@example.com", "correct horse battery staple");
     await app.setPreferredWeightUnit(owner.userId, "KG"); await app.setPreferredWeightUnit(other.userId, "KG"); await app.createRoutine(owner.userId);
-    await send("link", `link ${await app.createLinkToken(owner.userId)}`); await send("start", "start");
+    await send("link", `link ${await app.createLinkToken(owner.userId)}`); await send("start", "start"); await send("accept", "start planned");
   });
   afterEach(async () => { await app?.close(); });
   function send(id: string, text: string, from = "15555550123", options = {}) {
@@ -23,7 +23,7 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
     const adapter = new WhatsAppInboundAdapter("fixture-secret"); return app.processInbound(adapter.normalize(raw, adapter.sign(raw))[0]!, options);
   }
   it("fresh migrations and reruns preserve data and ordered migration ledger entries", async () => {
-    await app.migrate(); expect((await app.pool.query("select name from schema_migrations order by name")).rows.map(row => row.name)).toEqual(["0001_vertical_slice.sql","0002_us4.sql","0003_us5.sql","0004_us6.sql","0005_us7.sql","0006_release_integrity.sql"]);
+    await app.migrate(); expect((await app.pool.query("select name from schema_migrations order by name")).rows.map(row => row.name)).toEqual(["0001_vertical_slice.sql","0002_us4.sql","0003_us5.sql","0004_us6.sql","0005_us7.sql","0006_release_integrity.sql","0007_core_configuration.sql"]);
     expect(await app.currentUser(owner.sessionToken)).toBe(owner.userId);
   });
   it("database rejects foreign owner/parent relationships even without application checks", async () => {

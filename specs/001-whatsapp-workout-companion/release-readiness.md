@@ -5,7 +5,7 @@ Status: ready for human review; NOT approved for public production release.
 
 ## Required Decisions
 
-- [ ] Review and resolve R1-R3 in traceability-review.md: incomplete approved setup/start/transport paths. Do not provision production WhatsApp as part of this pass.
+- [ ] Review Phase A evidence closing setup/start gaps R1/R3; resolve transport R2 separately. Do not interpret signed fixtures or persisted responses as real WhatsApp delivery.
 - [ ] Decide physical erasure, backup erasure, retention duration and deletion propagation. Current deletion is soft/inaccessibility only; records and operational bodies can remain stored. No GDPR/CCPA compliance claim.
 - [ ] Approve external Gemini/WhatsApp data processing and free-tier project handling before real user data; model smoke used synthetic input only.
 - [ ] Review development dependency advisories and choose a separately tested major toolchain upgrade. Never expose Vitest/Vite/esbuild development servers.
@@ -32,8 +32,9 @@ npm start
 `npm start` validates configuration with production HTTPS requirements before starting Next.
 `check:runtime` reports missing/invalid variable names only, never values. The migration command needs DATABASE_URL only.
 For local development set an HTTP APP_ORIGIN matching the actual port and run `npm run dev -- --hostname 127.0.0.1 --port 3000`.
-Current implemented review screens: /history, /history/:workoutId, /analytics, /settings/data.
-They require a valid session; a complete returning-user sign-in/onboarding/routine UI is not available in this checkout.
+Current screens: /onboarding, /routines, /history, /history/:workoutId, /analytics, /settings/data.
+Onboarding creates a secure session, saves preferences and uses real configuration APIs; saved sessions can configure routines/select workouts.
+A returning-user password sign-in surface remains outside this Phase A pass; do not claim it exists.
 
 ## Database Rollout
 
@@ -41,7 +42,7 @@ Run migrations from repository root with a privileged migration-only connection 
 Use npm ci including development dependencies in that job; tsx is an explicit migration runner, not domain architecture.
 Serving processes must not run migrations automatically. Use a separate least-privilege runtime DB role.
 Stop mutation traffic, take an access-controlled backup and test restore in staging before upgrade.
-All migrations 0001 through 0005 apply in order; 0006 adds only relational ownership/context constraints and query indexes.
+All migrations 0001 through 0007 apply in order. 0006 adds relational ownership/context constraints and indexes; 0007 adds configuration/schedule/archive metadata, cursor versions and deferred sequence-position uniqueness for atomic reorder.
 The migration ledger and advisory lock serialize concurrent migration attempts. Migration batch is transactional; errors roll back.
 0006 deliberately fails if existing owner/parent/cursor relationships are inconsistent. Investigate corruption; do not delete rows or disable constraints to get a green migration.
 Confirmed identity merge consistency is deferred until transaction commit, not removed.

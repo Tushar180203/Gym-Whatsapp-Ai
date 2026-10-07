@@ -1,5 +1,14 @@
 # Technical Research: WhatsApp Workout Companion
 
+## Phase A Implementation Decisions (2026-10-07)
+
+- Configuration uses the existing PostgreSQL application and checked-out, owner-locked client transaction. Legacy routine fixture creation now also keeps BEGIN/statements/COMMIT on one client; it is not the onboarding acceptance path.
+- Approved UserProfile displayName is retained, persisted and returned. Unknown request/owner fields are rejected, not silently ignored.
+- Planned-day/frequency metadata is separate from the explicit cursor. Template edits preserve historical references/snapshots; migration 0007 adds archive metadata and deferred position uniqueness for atomic reorder.
+- A small shared known-identity catalog uses explicit load defaults, not guessed muscle classifications. Custom creation/aliases and sequence reorder reuse US4 confirmation authority; no second confirmation service or provider-specific domain types.
+- Runtime starts are proposals; only explicit acceptance activates them. Alternatives remain off-sequence, rest leaves the cursor unchanged, and replacement captures active/target routine/cursor versions before confirmation. Fixture-only helpers remain for lower-level tests.
+- Phase B transport and Phase C privacy/hosting remain deferred. No recipient storage, delivery, retention commitment or additional architecture.
+
 **Feature**: [spec.md](./spec.md)  
 **Date**: 2026-10-06
 
