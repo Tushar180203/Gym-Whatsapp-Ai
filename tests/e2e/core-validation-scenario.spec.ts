@@ -21,9 +21,9 @@ for (const width of [1280, 390]) test(`signed webhook workout through factual re
     { name: "Upper", exercises: [{ exerciseIdentityId: identity.id, plannedSetCount: 3, repTargetMin: 8, repTargetMax: 10 }] },
     { name: "Lower", exercises: [{ exerciseIdentityId: "global_leg_extension", plannedSetCount: 3, repTargetMin: 10 }] }
   ] } })).status()).toBe(200);
-  const link = await (await request.post("/api/whatsapp/link-token", { data: {} })).json(); let n = 0;
+  const link = await (await request.post("/api/whatsapp/link-token", { data: { phoneNumber: "+15555550888", consent: true } })).json(); let n = 0;
   async function send(text: string, id = `release-${n++}`) {
-    const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "release-web" }, messages: [{ id, from: "15555550888", text: { body: text } }] } }] }] });
+    const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "123456" }, messages: [{ id, from: "15555550888", timestamp: String(Math.floor(Date.now()/1000)), text: { body: text } }] } }] }] });
     const adapter = new WhatsAppInboundAdapter("release-web-secret"); const result = await request.post("/api/webhooks/whatsapp", { data: raw, headers: { "content-type": "application/json", "x-hub-signature-256": adapter.sign(raw) } });
     expect(result.status()).toBe(200); return (await result.json())[0].body as string;
   }
@@ -32,11 +32,11 @@ for (const width of [1280, 390]) test(`signed webhook workout through factual re
   await send("actually that was 9"); await send("add Red chest machine today"); expect(await send("yes")).toContain("applied");
   await send("35x10"); await send("done"); await send("save completed");
   const history = await app.history(userId); expect(history).toHaveLength(1); expect(history[0]!.sets.map(set => set.reps)).toEqual([10,9,9,10]);
-  const links = await (await request.get("/api/whatsapp/link")).json(); expect(links).toHaveLength(1);
-  expect(Object.keys(links[0]).sort()).toEqual(["id", "linkedAt", "revokedAt"]);
-  expect((await request.delete(`/api/whatsapp/link/${links[0].id}`)).status()).toBe(200);
-  expect((await request.delete(`/api/whatsapp/link/${links[0].id}`)).status()).toBe(200);
-  expect((await (await request.get("/api/whatsapp/link")).json())[0].revokedAt).not.toBeNull();
+  const links = await (await request.get("/api/whatsapp/link")).json(); expect(links.links).toHaveLength(1); expect(links.status).toBe("VERIFIED");
+  expect(JSON.stringify(links)).not.toContain("15555550888");
+  expect((await request.delete(`/api/whatsapp/link/${links.verified.id}`, { data: { confirm: true } })).status()).toBe(200);
+  expect((await request.delete(`/api/whatsapp/link/${links.verified.id}`, { data: { confirm: true } })).status()).toBe(200);
+  expect((await (await request.get("/api/whatsapp/link")).json()).status).toBe("REVOKED");
   expect((await app.personalRecords(userId, "Incline Dumbbell Press", "KG", "PER_HAND_PER_SIDE")).highestLoad?.loadValue).toBe(45);
   await context.addCookies([{ name: "workout_session", value: token, url: "http://127.0.0.1:3109", httpOnly: true, sameSite: "Strict" }]);
   await page.setViewportSize({ width, height: 844 }); await page.goto("/history"); await expect(page.getByRole("heading", { name: "Workout History" })).toBeVisible();

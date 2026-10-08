@@ -15,9 +15,11 @@ Unknown/owner fields are rejected; the authenticated session supplies the owner.
 
 ## WhatsApp Linking
 
-- `POST /api/whatsapp/link-token`: creates a short-lived link token/code.
-- `GET /api/whatsapp/link`: shows current link status.
-- `DELETE /api/whatsapp/link/:id`: revokes link.
+- `POST /api/whatsapp/link-token`: authenticated explicit challenge creation, strict `{ phoneNumber: "+countrycode...", consent: true, change?: boolean }`. International normalization never guesses a country. Returns `{ token, challengeId, expiresAt, maskedNumber, whatsappUrl }` once. Code is 128-bit random, case-insensitive, hashed at rest, valid for ten minutes. A new code supersedes the prior PENDING challenge. At most ten creations per owner per ten minutes. Existing verified links require explicit `change: true`, and remain usable until a different number proves ownership. The same already-verified number cannot create another challenge.
+- `GET /api/whatsapp/link`: authenticated, private no-store `{ status, verified, pending, links }`. Status is NOT_CONNECTED/PENDING/VERIFIED/REVOKED; verified and pending replacement may coexist. Only masked numbers, timestamps and owner-scoped IDs are returned. No code, expected hash or raw recipient is returned; reload never issues a code.
+- `DELETE /api/whatsapp/link/:id`: authenticated strict `{ confirm: true }`, owner-scoped idempotent disconnect. Revokes the link, invalidates pending challenges and removes its unused deliverable address. Replaying an already-revoked link cannot revoke a later link or erase another owner's recipient.
+
+Typed number is CLAIMED, not proof. Only `LINK <code>` from an authenticated matching Meta sender can consume the challenge and establish VERIFIED ownership. No public web verification endpoint, phone login, account recovery or automatic identity transfer. Final encrypted addressing is derived from that webhook sender, not the form. Public `WHATSAPP_BUSINESS_NUMBER` supplies wa.me destination; it is not the provider phone-number ID.
 
 ## Routines
 
@@ -124,3 +126,4 @@ Rules:
 - Provider message ids are deduplicated within the provider account.
 - Linked-user lookup uses `(provider, providerAccountId, providerUserIdentityHash)`; `providerAccountId` alone is not an end-user identity.
 - Provider-specific details stay outside workout domain logic.
+- GET requires single subscribe/token/numeric-challenge fields and returns plain challenge only after constant-time verification. Wrong token 403, malformed request 400, missing configuration 503. POST status receipts use the same authenticity gate and only update delivery metadata. See messaging.md and phase-b-transport.md for attempt/retry semantics; HTTP acknowledgement is not delivery evidence.

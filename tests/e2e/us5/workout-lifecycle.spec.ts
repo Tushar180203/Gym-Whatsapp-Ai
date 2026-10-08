@@ -20,10 +20,10 @@ test("real HTTP signup/link/webhook/log/resume/finish/history with exact persist
   expect((await request.patch("/api/profile", { data: { preferredWeightUnit: "LB" } })).status()).toBe(200);
   // Routine setup uses the existing repository API; a routine editor endpoint is outside US5.
   await app.createRoutine(userId);
-  const link = await request.post("/api/whatsapp/link-token", { data: {} }); const token = (await link.json()).token;
+  const link = await request.post("/api/whatsapp/link-token", { data: { phoneNumber: "+15555550999", consent: true } }); expect(link.status()).toBe(200); const token = (await link.json()).token;
   let n = 0;
   async function send(text: string, id = `http-${n++}`) {
-    const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "phone-http" }, messages: [{ id, from: "15555550999", text: { body: text } }] } }] }] });
+    const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "123456" }, messages: [{ id, from: "15555550999", timestamp: String(Math.floor(Date.now()/1000)), text: { body: text } }] } }] }] });
     const adapter = new WhatsAppInboundAdapter("us5-web-secret");
     const response = await request.post("/api/webhooks/whatsapp", { data: raw, headers: { "content-type": "application/json", "x-hub-signature-256": adapter.sign(raw) } });
     expect(response.status()).toBe(200); return response.json();

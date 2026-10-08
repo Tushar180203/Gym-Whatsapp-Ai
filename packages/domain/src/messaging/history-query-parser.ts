@@ -1,5 +1,6 @@
 import type { HistoryAction } from "../../../analytics/src/history-question-service.js";
 export function isCoachingQuestion(text: string): boolean {
+  if (/according to (?:my |the )?plan|what (?:am i doing|is on my plan) today/i.test(text)) return false;
   return /\bshould (?:i|we)\b|\bwhat should\b|\bam i\b.*\benough\b|\brecommend\b.*\b(?:weight|progression|deload|volume)\b/i.test(text);
 }
 export function parseHistoryQuestion(text: string): HistoryAction | undefined {
@@ -10,7 +11,7 @@ export function parseHistoryQuestion(text: string): HistoryAction | undefined {
   if (match) return { type: "QUERY_HISTORY", queryKind: "LAST_EXERCISE", subject: { kind: "EXERCISE", exerciseRef: match[1]!.trim() } };
   match = value.match(/^(?:what's|what is) my best (.+)$/i);
   if (match) return { type: "QUERY_HISTORY", queryKind: "BEST_SET", subject: { kind: "EXERCISE", exerciseRef: match[1]!.trim() } };
-  match = value.match(/^how many (.+?) sets (?:this week|did I do this week)$/i);
+  match = value.match(/^how many (.+?) sets (?:this week|did I do this week|have I (?:done|logged) this week)$/i);
   if (match) return { type: "QUERY_ANALYTICS", queryKind: "WEEKLY_PRIMARY_MUSCLE_SETS", subject: { kind: "MUSCLE", muscleRef: match[1]!.trim() } };
   match = value.match(/^when did I last train (.+)$/i);
   if (match) return { type: "QUERY_ANALYTICS", queryKind: "LAST_TRAINED", subject: { kind: "MUSCLE", muscleRef: match[1]!.trim() } };

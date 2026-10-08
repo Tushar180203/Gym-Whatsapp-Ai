@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Pool } from "pg";
 import { PostgresVerticalSliceApp } from "../../packages/persistence/src/postgres.js";
 import { WhatsAppInboundAdapter } from "../../packages/messaging/src/index.js";
+import { hashChallenge } from "../../packages/messaging/src/whatsapp/link-challenge.js";
 
 const url = process.env.TEST_DATABASE_URL;
 const pgDescribe = url || process.env.REQUIRE_POSTGRES_TESTS === "1" ? describe : describe.skip;
@@ -20,7 +21,7 @@ pgDescribe("Phase A deterministic proposal, selection and replacement", () => {
     owner = await app.signUp("selection@example.com", "correct horse battery staple");
     await app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "KG" }));
     await app.configure(owner.sessionToken, c => c.saveRoutine(input()));
-    await send(`link ${await app.createLinkToken(owner.userId)}`);
+    await send(`link ${await app.createLinkToken(owner.userId, hashChallenge("15555550123"))}`);
   });
   afterEach(async () => { await app?.close(); });
   async function send(text: string, id = `choice-${next++}`) {
@@ -33,7 +34,8 @@ pgDescribe("Phase A deterministic proposal, selection and replacement", () => {
     expect((await app.activeWorkout(owner.userId))!.status).toBe("PROPOSED"); expect(interpret).not.toHaveBeenCalled();
     expect((await send("resume")).body).toContain("Start planned workout");
     expect((await app.activeWorkout(owner.userId))!.status).toBe("PROPOSED");
-    await expect(send("50x8")).rejects.toMatchObject({ code: "NO_ACTIVE_WORKOUT" });
+    expect((await send("50x8")).body).toContain("START");
+    expect((await app.pool.query("select id from workout_sets where user_id=$1", [owner.userId])).rows).toEqual([]);
     expect((await send("start planned")).body).toContain("Started Upper"); await send("50x8 failed the 9th");
     expect((await app.pool.query("select reps from workout_sets where user_id=$1", [owner.userId])).rows).toEqual([{ reps: 8 }]);
   });
@@ -59,7 +61,7 @@ pgDescribe("Phase A deterministic proposal, selection and replacement", () => {
     await send("start planned"); const id = (await app.activeWorkout(owner.userId))!.id;
     await send("begin my training"); expect((await app.activeWorkout(owner.userId))!.id).toBe(id);
     interpret.mockResolvedValue({ schemaVersion: "workout-action.v1", action: { type: "UPDATE_ROUTINE_REQUEST", scope: "SESSION_ONLY", requestedChange: { operation: "REORDER_SESSION", sessionRef: "Lower", newOrderRef: "1" } }, confidence: "high", requiresClarification: false, rationaleCodes: [], forbiddenDirectMutation: true });
-    await expect(send("do the other session first today")).rejects.toThrow("action.scope");
+    expect((await send("do the other session first today")).body).toContain("replace?");
     expect((await app.configure(owner.sessionToken, c => c.routines()))[0]!.sessions.map(session => session.name)).toEqual(["Upper", "Lower"]);
     expect((await app.pool.query("select id from pending_confirmations where status='PENDING'")).rows).toEqual([]);
   });

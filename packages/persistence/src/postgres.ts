@@ -23,6 +23,10 @@ import { Configuration } from "./configuration.js";
 import { WorkoutSelection } from "./workout-selection.js";
 import { parseStartIntent, type StartChoice } from "../../domain/src/workouts/start-intent.js";
 import { z } from "zod";
+import { linkRequestSchema, parseLinkCommand } from "../../messaging/src/whatsapp/link-challenge.js";
+import { WhatsAppLinks, verifyWhatsAppChallenge, queuePlanReady, type VerifiedRecipientWriter } from "./whatsapp-links.js";
+import { ConversationOrchestrator } from "../../domain/src/conversation/orchestrator.js";
+import { PostgresConversation } from "./conversation.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
@@ -30,6 +34,7 @@ export type PostgresSliceConfig = {
   observe?: (event: SafeEvent) => void;
   checkInboundLimit?: (key: string) => void;
   checkAiLimit?: (key: string) => void;
+  checkLinkLimit?: (key: string) => void;
 };
 
 export type PgHistoryEntry = {
@@ -71,7 +76,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql", "0007_core_configuration.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql", "0007_core_configuration.sql", "0008_whatsapp_transport.sql", "0009_whatsapp_ownership.sql", "0010_conversation.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -86,15 +91,26 @@ export class PostgresVerticalSliceApp {
     const userId = id("user");
     const sessionId = id("session");
     const sessionToken = token();
-    await this.pool.query(
-      `insert into users (id, email, password_hash) values ($1, $2, $3)`,
-      [userId, email.toLowerCase(), hashPassword(password)]
-    );
-    await this.pool.query(
-      `insert into auth_sessions (id, user_id, token_hash, expires_at) values ($1, $2, $3, now() + interval '30 days')`,
-      [sessionId, userId, sha256(sessionToken)]
-    );
-    return { userId, sessionToken };
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(
+        `insert into users (id, email, password_hash) values ($1, $2, $3)`,
+        [userId, email.toLowerCase(), hashPassword(password)]
+      );
+      await client.query(
+        `insert into auth_sessions (id, user_id, token_hash, expires_at) values ($1, $2, $3, now() + interval '30 days')`,
+        [sessionId, userId, sha256(sessionToken)]
+      );
+      await client.query("commit");
+      return { userId, sessionToken };
+    } catch (error) {
+      await client.query("rollback");
+      if (error instanceof Error && "code" in error && error.code === "23505" && "constraint" in error && error.constraint === "active_user_email") {
+        throw new DomainError("Account could not be created", "SIGNUP_UNAVAILABLE");
+      }
+      throw error;
+    } finally { client.release(); }
   }
 
   async currentUser(sessionToken: string): Promise<string> {
@@ -234,25 +250,26 @@ export class PostgresVerticalSliceApp {
     }
   }
 
-  async createLinkToken(userId: string): Promise<string> {
-    const raw = token();
-    await this.pool.query(
-      `insert into account_link_tokens (id, user_id, token_hash, expires_at) values ($1, $2, $3, now() + interval '10 minutes')`,
-      [id("linktoken"), userId, sha256(raw)]
-    );
-    return raw;
+  /** Trusted repository fixture setup, never exposed as an unauthenticated API. */
+  async createLinkToken(userId: string, expectedIdentityHash: string): Promise<string> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin"); await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+      const result = await new WhatsAppLinks(client, userId).issue(expectedIdentityHash, null, false, false);
+      await client.query("commit"); return result.token;
+    } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
   }
 
-  async createWebLinkToken(sessionToken: string) {
+  async createWebLinkToken(sessionToken: string, input: unknown) {
+    const value = linkRequestSchema.parse(input);
     return this.ownerTransaction(sessionToken, async (client, userId) => {
-      const raw = token();
-      const record = (await client.query("insert into account_link_tokens(id,user_id,token_hash,expires_at) values($1,$2,$3,clock_timestamp()+interval '10 minutes') returning expires_at", [id("linktoken"), userId, sha256(raw)])).rows[0];
-      return { token: raw, expiresAt: record.expires_at.toISOString() as string };
+      return new WhatsAppLinks(client, userId).issue(value.phoneNumber.identityHash, value.phoneNumber.maskedNumber, value.change, true);
     });
   }
 
-  async processInbound(message: NormalizedWhatsAppMessage, options: { crashAfterCommandBeforeOutbound?: boolean } = {}) {
+  async processInbound(message: NormalizedWhatsAppMessage, options: { crashAfterCommandBeforeOutbound?: boolean; writeVerifiedRecipient?: VerifiedRecipientWriter } = {}) {
     this.config.checkInboundLimit?.(sha256(JSON.stringify([message.provider,message.providerAccountId,message.providerUserIdentityHash])));
+    if (parseLinkCommand(message.text)) this.config.checkLinkLimit?.(sha256(JSON.stringify([message.provider,message.providerAccountId,message.providerUserIdentityHash])));
     const started = performance.now();
     const client = await this.pool.connect();
     try {
@@ -264,6 +281,9 @@ export class PostgresVerticalSliceApp {
           await client.query("select pg_advisory_xact_lock(hashtext($1))", [inbound.user_id]);
           const user = (await client.query("select deleted_at,data_control_generation from users where id=$1", [inbound.user_id])).rows[0];
           if (!user || user.deleted_at) throw new DomainError("User unavailable", "UNAUTHORIZED");
+          if (await this.resolveUser(client, message) !== inbound.user_id) throw new DomainError("Identity unavailable", "UNAUTHORIZED");
+          const verifiedLink = (await client.query("select verified_link_id from inbound_messages where id=$1", [inbound.id])).rows[0]?.verified_link_id;
+          if (verifiedLink && !(await client.query("select id from whatsapp_identity_links where id=$1 and user_id=$2 and status='VERIFIED' and revoked_at is null", [verifiedLink, inbound.user_id])).rows.length) throw new DomainError("Identity unavailable", "UNAUTHORIZED");
           const generation = (await client.query("select data_control_generation from inbound_messages where id=$1", [inbound.id])).rows[0].data_control_generation;
           if (generation !== user.data_control_generation) { await client.query("commit"); return { reused: true, body: "Previous workout data is no longer available." }; }
           const outbound = await client.query(`select id from outbound_messages where inbound_message_id = $1`, [
@@ -274,16 +294,28 @@ export class PostgresVerticalSliceApp {
           }
         }
         await client.query("commit");
-        return { reused: true, body: inbound.result_body ?? "Recovered previous result" };
+        return { reused: true, body: inbound.result_body ?? "Recovered previous result", verificationRejected: !inbound.user_id };
       }
-      const userId = await this.resolveUser(client, message);
+      const linkCommand = parseLinkCommand(message.text);
+      const verification = linkCommand ? await verifyWhatsAppChallenge(client, message, linkCommand.code, options.writeVerifiedRecipient) : undefined;
+      if (verification?.verificationRejected) {
+        await client.query("update inbound_messages set processing_status='COMPLETED',processed_at=clock_timestamp(),result_body=$2 where id=$1", [inbound.id, verification.body]);
+        await client.query("commit"); return { reused: false, body: verification.body, verificationRejected: true };
+      }
+      const userId = verification?.userId ?? await this.resolveUser(client, message);
       await client.query(`update inbound_messages set processing_status = 'PROCESSING', user_id = $2 where id = $1`, [
         inbound.id,
         userId
       ]);
       await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [userId]);
       if (!(await client.query("select id from users where id=$1 and deleted_at is null", [userId])).rows.length) throw new DomainError("User unavailable", "UNAUTHORIZED");
-      const body = await this.applyMessage(client, userId, inbound.id, message.text);
+      if (!verification && await this.resolveUser(client, message) !== userId) throw new DomainError("Identity unavailable", "UNAUTHORIZED");
+      await client.query(`update inbound_messages set verified_link_id=(select l.id from whatsapp_identity_links l
+        join whatsapp_provider_user_identities i on i.id=l.whatsapp_provider_user_identity_id
+        join whatsapp_provider_accounts a on a.id=i.whatsapp_provider_account_id
+        where l.user_id=$2 and l.status='VERIFIED' and a.provider_account_id=$3 and i.provider_user_identity_hash=$4 limit 1) where id=$1`,
+      [inbound.id, userId, message.providerAccountId, message.providerUserIdentityHash]);
+      const body = verification?.body ?? await this.applyMessage(client, userId, inbound.id, message.text, message.providerSentAt);
       await client.query(`update inbound_messages set processing_status = 'COMPLETED', processed_at = now(), result_body=$2,data_control_generation=(select data_control_generation from users where id=$3) where id = $1`, [
         inbound.id, body, userId
       ]);
@@ -555,54 +587,31 @@ export class PostgresVerticalSliceApp {
       `select l.user_id
        from whatsapp_provider_accounts a
        join whatsapp_provider_user_identities i on i.whatsapp_provider_account_id = a.id
-       join whatsapp_identity_links l on l.whatsapp_provider_user_identity_id = i.id and l.revoked_at is null
-       where a.provider_account_id = $1 and i.provider_user_identity_hash = $2`,
+       join whatsapp_identity_links l on l.whatsapp_provider_user_identity_id = i.id and l.revoked_at is null and l.status='VERIFIED'
+       where a.provider='WHATSAPP_CLOUD_API' and a.provider_account_id = $1 and i.provider_user_identity_hash = $2`,
       [message.providerAccountId, message.providerUserIdentityHash]
     );
     if (linked.rows[0]) return linked.rows[0].user_id;
-    const tokenMatch = message.text.match(/(?:^|\s)link\s+([A-Za-z0-9_-]+)/i);
-    if (!tokenMatch?.[1]) throw new DomainError("Unlinked identity", "UNLINKED_IDENTITY");
-    const tokenHash = sha256(tokenMatch[1]);
-    const tokenResult = await client.query<{ id: string; user_id: string }>(
-      `select id, user_id from account_link_tokens
-       where token_hash = $1 and consumed_at is null and expires_at > now()
-       for update`,
-      [tokenHash]
-    );
-    const tokenRow = tokenResult.rows[0];
-    if (!tokenRow) throw new DomainError("Invalid link token", "INVALID_LINK_TOKEN");
-    const accountId = id("wap");
-    await client.query(
-      `insert into whatsapp_provider_accounts (id, provider, provider_account_id)
-       values ($1, 'WHATSAPP_CLOUD_API', $2)
-       on conflict (provider, provider_account_id) do nothing`,
-      [accountId, message.providerAccountId]
-    );
-    const account = await client.query<{ id: string }>(
-      `select id from whatsapp_provider_accounts where provider = 'WHATSAPP_CLOUD_API' and provider_account_id = $1`,
-      [message.providerAccountId]
-    );
-    const identityId = id("wpi");
-    await client.query(
-      `insert into whatsapp_provider_user_identities (id, whatsapp_provider_account_id, provider_user_identity_hash)
-       values ($1, $2, $3)
-       on conflict (whatsapp_provider_account_id, provider_user_identity_hash) do nothing`,
-      [identityId, account.rows[0]!.id, message.providerUserIdentityHash]
-    );
-    const identity = await client.query<{ id: string }>(
-      `select id from whatsapp_provider_user_identities where whatsapp_provider_account_id = $1 and provider_user_identity_hash = $2`,
-      [account.rows[0]!.id, message.providerUserIdentityHash]
-    );
-    await client.query(
-      `insert into whatsapp_identity_links (id, user_id, whatsapp_provider_user_identity_id, linked_at)
-       values ($1, $2, $3, now())`,
-      [id("walink"), tokenRow.user_id, identity.rows[0]!.id]
-    );
-    await client.query(`update account_link_tokens set consumed_at = now() where id = $1`, [tokenRow.id]);
-    return tokenRow.user_id;
+    throw new DomainError("Unverified identity", "UNLINKED_IDENTITY");
   }
 
-  private async applyMessage(client: PoolClient, userId: string, inboundId: string, text: string): Promise<string> {
+  private async applyMessage(client: PoolClient, userId: string, inboundId: string, text: string, eventAt?: number): Promise<string> {
+    const started = performance.now();
+    const ports = new PostgresConversation(client, userId, inboundId,
+      value => this.applyDeterministicMessage(client, userId, inboundId, value),
+      value => this.logSets(client, userId, inboundId, `${inboundId}:log`, value), {
+        ...(this.interpreter ? { interpreter: this.interpreter } : {}),
+        beforeAi: () => this.config.checkAiLimit?.(userId),
+        observe: trace => {
+          this.config.observe?.({ event: "conversation_route", ...trace });
+          this.config.observe?.({ event: "message_latency", path: trace.aiInvoked ? "AI" : "DETERMINISTIC", durationMs: performance.now() - started });
+          if (trace.executionResult === "AI_FAILED") this.config.observe?.({ event: "ai_failure", code: "AI_FAILED" });
+        }
+      });
+    return new ConversationOrchestrator(ports).process(text, eventAt);
+  }
+
+  private async applyDeterministicMessage(client: PoolClient, userId: string, inboundId: string, text: string): Promise<string | undefined> {
     const lower = text.trim().toLowerCase();
     if (lower.startsWith("link ")) return "WhatsApp linked";
     const us4 = new Us4Commands(client, userId, inboundId);
@@ -634,37 +643,9 @@ export class PostgresVerticalSliceApp {
     try {
       await this.logSets(client, userId, inboundId, commandKey, text);
     } catch (error) {
-      if (!(error instanceof DomainError) || error.code !== "NO_SET_NOTATION" || !this.interpreter) throw error;
-      this.config.checkAiLimit?.(userId);
-      const aiStarted = performance.now();
-      const activeContext = await client.query("select w.id,e.display_name from workout_sessions w left join session_exercises se on se.id=w.active_session_exercise_id left join exercise_identities e on e.id=se.exercise_identity_id where w.user_id = $1 and w.status = 'ACTIVE'", [userId]);
-      const known = await client.query("select display_name from exercise_identities where (owner_user_id=$1 or owner_user_id is null) and merged_into_id is null", [userId]);
-      const aliases = await client.query("select a.alias_text,e.display_name from exercise_aliases a join exercise_identities e on e.id=a.exercise_identity_id where a.user_id=$1 and a.status='CONFIRMED' and e.merged_into_id is null", [userId]);
-      let envelope;
-      try { envelope = await this.interpreter.interpret({
-        userInput: text, idempotencyKey: commandKey, context: { userId, activeWorkout: activeContext.rows.length > 0, ...(activeContext.rows[0]?.display_name ? { activeExercise: activeContext.rows[0].display_name } : {}), knownExerciseRefs: known.rows.map(row => row.display_name), confirmedAliases: aliases.rows.map(row => ({ alias: row.alias_text, exerciseRef: row.display_name })) }
-      }); } catch (error) { this.config.observe?.({ event: "ai_failure", code: "AI_INTERPRETATION_FAILED" }); throw error; }
-      this.config.observe?.({ event: "message_latency", path: "AI", durationMs: performance.now() - aiStarted });
-      const validated = parseProposedActionEnvelope(envelope);
-      if (validated.confidence === "low") return "Please clarify the requested action.";
-      if (validated.requiresClarification && (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS")) return "Which exact exercise, workout session or muscle do you mean?";
-      if (validated.requiresClarification) return validated.clarificationQuestion ?? "Please clarify the request.";
-      if (validated.action.type === "QUERY_HISTORY" || validated.action.type === "QUERY_ANALYTICS") return answerHistoryQuestion(await new AnalyticsQueries(client, userId).snapshot(), validated.action);
-      if (validated.action.type === "UNKNOWN") return coachingBoundary;
-      if (validated.action.type === "START_WORKOUT") return new WorkoutSelection(client, userId).start(validated.action.routineRef, validated.action.sessionRef);
-      if (validated.action.type === "CHANGE_SESSION") {
-        if (validated.action.scope !== "SESSION_ONLY") return "Today only or update your routine?";
-        return new WorkoutSelection(client, userId).choose(validated.action.sessionRef);
-      }
-      if (validated.action.type === "RESUME_WORKOUT") return lifecycle.resume(validated.action.workoutRef);
-      if (validated.action.type === "FINISH_WORKOUT") {
-        // A model-supplied completion choice is not evidence of explicit user consent.
-        const choice = parseCompletionIntent(text);
-        return lifecycle.finish(`${inboundId}:finish`, choice ?? "REQUEST");
-      }
-      return withContext(await us4.dispatchEnvelope(validated, text, `${inboundId}:us4`));
+      if (error instanceof DomainError && error.code === "NO_SET_NOTATION") return undefined;
+      throw error;
     }
-    this.config.observe?.({ event: "message_latency", path: "DETERMINISTIC" });
     return "Logged set";
   }
 
@@ -765,17 +746,27 @@ export class PostgresVerticalSliceApp {
     body: string
   ): Promise<void> {
     const outboundId = id("outbound");
-    await client.query(
+    const persisted = await client.query(
       `insert into outbound_messages
        (id, user_id, inbound_message_id, provider_account_id, provider_user_identity_hash, body_hash, body, status, sent_at)
        values ($1, $2, $3, $4, $5, $6, $7, 'PENDING', null)
-       on conflict do nothing`,
+       on conflict (inbound_message_id) do update set inbound_message_id=excluded.inbound_message_id returning id`,
       [outboundId, userId, inboundId, message.providerAccountId, message.providerUserIdentityHash, sha256(body), body]
     );
     await client.query(`update inbound_messages set outbound_message_id = $1 where id = $2 and outbound_message_id is null`, [
-      outboundId,
+      persisted.rows[0]!.id,
       inboundId
     ]);
+    await client.query(`update outbound_messages set notification_link_id=(select verified_link_id from inbound_messages where id=$3),
+      owner_generation=(select data_control_generation from users where id=$2) where id=$1 and notification_link_id is null`,
+    [persisted.rows[0]!.id, userId, inboundId]);
+    if (parseLinkCommand(message.text) && body === "WhatsApp connected successfully. You can now receive and log your workouts.") {
+      const link = (await client.query("select verified_link_id from inbound_messages where id=$1", [inboundId])).rows[0]?.verified_link_id;
+      if (link) {
+        await client.query("update outbound_messages set notification_key=$2 where id=$1", [persisted.rows[0]!.id, `welcome:${link}`]);
+        await queuePlanReady(client, userId, link, message.providerAccountId);
+      }
+    }
   }
 }
 

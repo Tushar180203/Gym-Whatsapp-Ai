@@ -1,11 +1,17 @@
 # Implementation Traceability Review
 
-Date: 2026-10-07. Updated after Phase A core self-service closure. No requirements or reviewer checklist markers changed.
+## Conversation Extension Evidence
+
+T130-T135 implement the user-approved A-AH conversation design, traced in [conversation-orchestration.md](conversation-orchestration.md). Existing FR-019/020/022/023/024d/e, FR-025-039g, FR-040-049f and FR-050-066 keep their existing domain authorities; grammar/state/continuations strengthen how users reach them. Evidence is the domain grammar/orchestrator invariant tests, twenty PostgreSQL semantic fixture families, nested/restart/replay/foreign-target tests and seven new `eval-case.v1` variations. No new FR IDs, marketing/retention claims or public-release readiness are introduced. Existing release blockers and unrelated partial task markers remain as recorded below.
+
+Date: 2026-10-08. Updated after Phase A and Phase B controlled transport closure. No requirements or reviewer checklist markers changed.
 
 ## Verdict
 
+Ownership verification amendment (2026-10-08): FR-004/FR-005 and T038/T039/T046A/T047/T057 trace to `packages/persistence/src/whatsapp-links.ts`, `packages/messaging/src/whatsapp/link-challenge.ts`, migration 0009, existing link/webhook APIs and LinkTokenManager. Evidence: nine unit normalization/parser/consent cases, twelve PostgreSQL ownership/rollback/restart/upgrade/notification-retry cases, eight mock-provider LINK/unverified AI-bypass cases, controlled HTTP provider using actual signup/profile/routine/challenge APIs, and two desktop/mobile browser setup/link/change/disconnect cases. T047 is completed against executable evidence rather than its formerly absent domain test path. No new requirement IDs/tasks or release/privacy sign-off. T124/live-provider and external policy gates remain open.
+
 Ready for human review: YES. Local Phase A self-service journey: YES. End-to-end WhatsApp/public-release MVP: NO.
-Phase A closes approved setup/start/configuration gaps; transport, external decisions and remaining task evidence are not implied complete.
+Phase A closes approved setup/start/configuration gaps; Phase B implements isolated transport with controlled HTTP/PostgreSQL evidence. Live Meta acceptance, external decisions and remaining task evidence are not implied complete.
 
 All 137 functional requirement IDs are indexed below. The 19 previously partial core rows now have Phase A implementation/test evidence;
 7 are discretionary MAY behaviors. This is requirement evidence, not public-release sign-off.
@@ -16,10 +22,10 @@ Requirements-quality checklists remain requirements 16/16 and readiness 44/44, n
 ## Blocking Findings
 
 - R1 RESOLVED for Phase A: real onboarding/routine/link-status/revoke/rename/alias APIs/UI persist validated owner configuration. Profile displayName round-trips. Lower-level tests may retain fixture helpers, but self-service acceptance and the release browser scenario use actual APIs/UI. Returning-user password sign-in was not added; existing secure sessions/logout remain usable.
-- R2 HIGH: outbound WhatsApp adapter and GET webhook challenge are absent (T014/T050/T056). Persisting a response is not delivery. This pass fixes false SENT records to PENDING; real provider send/retry/service-window behavior is not verified. Historic SENT records from older code require operator reconciliation; never assume delivery or blindly resend them.
+- R2 CODE RESOLVED, LIVE ACCEPTANCE OPEN: T014/T050/T056/T059/T125 implement challenge/authentication, encrypted recipient boundary, real Cloud API adapter, durable bounded attempts/receipts and migration 0008 legacy quarantine. `tests/postgres/whatsapp-transport.test.ts` verifies signed HTTP -> deterministic commands -> PostgreSQL -> controllable HTTP provider, replay/retry/restart/concurrency/ownership. SENT now requires provider acceptance evidence. Live Meta/handset acceptance remains opt-in; historical quarantine never automatically replays. See phase-b-transport.md.
 - R3 RESOLVED for Phase A: deterministic start intents and locally validated Gemini START_WORKOUT propose full cursor-selected plans; explicit acceptance, alternatives/rest, confirmed atomic replacement and confirmed permanent sequence reorder have real PostgreSQL/browser evidence. No inferred AI acceptance/replacement; snapshots and off-sequence cursor policy are preserved.
 - R4 HIGH: privacy release decisions remain unresolved: physical erasure, backup erasure, retention duration and deletion propagation, plus external AI/WhatsApp data handling. Soft deletion blocks access but retains rows/audits/operational message bodies. No GDPR/CCPA compliance claim is made.
-- R5 MEDIUM: T007 remains incomplete; lint currently runs the TypeScript compiler, identical to typecheck. T025 observability remains partial: safe failures/duplicate/AI/path signals exist, but full confirmation and outbound lifecycle instrumentation and meaningful deterministic latency distributions are not complete. T124/T125 remain partial for the reasons above. Earlier unchecked tasks are not mechanically marked complete.
+- R5 MEDIUM: T007 remains incomplete; lint still runs the TypeScript compiler. T025 remains partial for full confirmation signals and meaningful deterministic latency distributions; outbound internal-ID attempt/failure signals now exist. T125 complete with controlled transport evidence; T124 remains partial for live/full release acceptance. T046C/T048 and other unrelated earlier unchecked tasks are not mechanically marked complete.
 - R6 MEDIUM: development toolchain has nine npm audit entries, including two critical; production audit is clean. Major-version remediation requires a separately reviewed toolchain upgrade. Do not expose test/dev servers or execute untrusted tests with credentials.
 
 ## Governance Review
@@ -41,16 +47,16 @@ All CHK001-CHK044 remain checked as design-quality criteria; implementation evid
 | CHK012-CHK016 | Parser/PG tests preserve KG/LB/default/per-side values; 50x8 failed the 9th persists eight reps, without inventing failure metadata. |
 | CHK017-CHK021 | US4 correction/deletion audit, US5 current-truth PRs, US7 removal tests; expiry/stale/duplicate coverage. |
 | CHK022-CHK024 | Phase A multi-routine clarification, user selection, off-sequence completion and confirmed permanent reorder tests. |
-| CHK025-CHK028 | Signed normalized token-consumption path and replay identity guard; challenge/outbound gap R2. |
-| CHK029-CHK031 | PostgreSQL recovery/replay/concurrency/restart tests; real send/retry policy not proven R2. |
+| CHK025-CHK028 | Signed token consumption, sender guard, GET challenge and encrypted provider recipient resolution; controlled HTTP transport evidence, live acceptance open. |
+| CHK029-CHK031 | PostgreSQL durable attempts, bounded retry, unknown no-replay, receipts, legacy quarantine, recovery/concurrency/restart and controlled HTTP send evidence. |
 | CHK032-CHK035 | Local schemas, guard tests, deterministic zero-provider-call tests, Gemini normalization tests; live smoke is narrow. |
 | CHK036-CHK039 | Exact comparable history/derived PR/primary-only analytics and coaching-boundary tests. |
 | CHK040 | Secure sessions, owner queries, data control tests, redacted log allowlist, bounded local limits; external edge policy/privacy R4. |
-| CHK041-CHK044 | Configuration/selection routes implemented; absent GET verification/outbound remains R2. Mock eval limitations documented; single-app architecture preserved. |
+| CHK041-CHK044 | Configuration/selection plus GET/signed POST/receipts and isolated Cloud API adapter implemented; live acceptance open. Mock eval limitations documented; single-app architecture preserved. |
 
 ## Route Review
 
-Every implemented API route uses apiResponse; owner session resolution is required except signup and signed provider callback. Logout is harmless on repeat.
+JSON APIs use apiResponse; provider GET verification returns the required plain challenge directly. Owner session resolution is required except signup, challenge verification and signed provider callback. Logout is harmless on repeat.
 Foreign workout/set/classification/export/deletion request IDs are not authorization; PostgreSQL regressions and browser HTTP tests cover them.
 Profile takes owner from session, not client userId. Analytics/history use owner snapshots. Alias/correction targets resolve only inside owner-scoped commands.
 Phase A browser HTTP tests reject anonymous/foreign routine/exercise IDs; PostgreSQL tests reject foreign set/replacement IDs. Request-ID enumeration returns safe not-found errors.
@@ -66,8 +72,8 @@ Paths are relative to repository root. Test files are direct evidence locations,
 | FR-001 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
 | FR-002 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-003 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
-| FR-004 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
-| FR-005 | T034-T046C | apps/web/app/api/auth/signup/route.ts; apps/web/app/api/profile/route.ts; packages/persistence/src/postgres.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
+| FR-004 | T034-T046C; T050; T059 | apps/web/app/api/whatsapp/link-token/route.ts; packages/persistence/src/postgres.ts; apps/web/app/api/webhooks/whatsapp/route.ts | tests/postgres/postgres-vertical-slice.test.ts; tests/postgres/whatsapp-transport.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
+| FR-005 | T050; T059; T125 | packages/persistence/src/postgres.ts; packages/messaging/src/whatsapp/inbound-adapter.ts; apps/web/app/api/webhooks/whatsapp/route.ts | tests/integration/messaging/whatsapp-verification.test.ts; tests/postgres/whatsapp-transport.test.ts; tests/e2e/core-validation-scenario.spec.ts | CORE EVIDENCE |
 | FR-006 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-007 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |
 | FR-008 | T034-T046C | packages/persistence/src/configuration.ts; packages/contracts/src/api/configuration.ts; apps/web/components/routines/setup-view.tsx | tests/postgres/phase-a-configuration.test.ts; tests/e2e/us1-onboarding-routine.spec.ts | CORE EVIDENCE (Phase A) |

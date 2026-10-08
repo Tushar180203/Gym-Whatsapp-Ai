@@ -36,6 +36,6 @@ export async function apiResponse(request: Request, handler: () => Promise<unkno
     const status = error instanceof DomainError ? error.code === "PAYLOAD_TOO_LARGE" ? 413 : error.code === "RATE_LIMITED" ? 429 : error.code === "UNAUTHENTICATED" ? 401 : error.code === "NOT_FOUND" ? 404 : error.code === "STALE_VERSION" ? 409 : 400
       : error instanceof AiProviderError && error.retryable ? 503
       : error instanceof ZodError || error instanceof SyntaxError ? 400 : 500;
-    return Response.json({ error: status === 429 ? "Too many requests. Try again shortly." : status === 409 ? "Workout changed. Refresh before editing." : status === 401 ? "Authentication required." : status === 404 ? "Record not found." : "Request could not be applied." }, { status, headers: { "Cache-Control": "no-store", ...(status === 429 ? { "Retry-After": "60" } : {}) } });
+    return Response.json({ error: error instanceof DomainError && error.code === "SIGNUP_UNAVAILABLE" ? "Account could not be created. Try signing in or use a different email." : status === 429 ? "Too many requests. Try again shortly." : status === 409 ? "Workout changed. Refresh before editing." : status === 401 ? "Authentication required." : status === 404 ? "Record not found." : "Request could not be applied." }, { status, headers: { "Cache-Control": "no-store", ...(status === 429 ? { "Retry-After": "60" } : {}) } });
   }
 }

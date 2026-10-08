@@ -49,8 +49,10 @@ for (const width of [1280, 390]) test(`self-service configuration survives reloa
   await page.getByLabel("Exercise display name", { exact: true }).fill("Red press machine"); await page.getByRole("button", { name: "Save name", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Managed exercise", exact: true }).locator("option:checked")).toHaveText("Red press machine");
   await page.clock.install();
-  await page.getByRole("button", { name: "Generate link token", exact: true }).click(); await expect(page.locator(".link-token")).toBeVisible();
-  await page.clock.fastForward(10 * 60 * 1000 + 1000); await expect(page.getByText("Link token expired.", { exact: true })).toBeVisible(); await expect(page.locator(".link-token")).toHaveCount(0);
+  await page.getByLabel("WhatsApp phone number", { exact: true }).fill("+919685719847");
+  await page.getByLabel("I want to use WhatsApp to receive and log my workouts.", { exact: true }).check();
+  await page.getByRole("button", { name: "Verify on WhatsApp", exact: true }).click(); await expect(page.locator(".link-token")).toBeVisible();
+  await page.clock.fastForward(10 * 60 * 1000 + 1000); await expect(page.getByText("Verification code expired. Generate a new one.", { exact: true })).toBeVisible(); await expect(page.locator(".link-token")).toHaveCount(0);
   await page.screenshot({ path: `/tmp/phase-a-onboarding-${width}.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

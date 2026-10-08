@@ -1,5 +1,7 @@
 # Feature Specification: WhatsApp Workout Companion
 
+**Approved implementation clarification (2026-10-08)**: The user's A-AH conversational robustness request is traced in [conversation-orchestration.md](conversation-orchestration.md) and T130-T135. It strengthens interaction inside existing workout, routine and factual-history behavior without adding product requirements, weakening confirmations or approving Phase C/public release.
+
 **Feature Branch**: `001-whatsapp-workout-companion`
 
 **Created**: 2026-10-06
@@ -9,6 +11,10 @@
 **Input**: User description: "Create the first product specification for the approved WhatsApp Workout Companion."
 
 ## Clarifications
+
+### Session 2026-10-08
+
+- Approved ownership-verification implementation request: a typed website WhatsApp number is only CLAIMED. Require explicit workout messaging consent and a number-bound short-lived challenge; only authenticated matching Meta sender proof establishes VERIFIED ownership/addressing. Number changes are explicit and preserve the old link until proof; confirmed disconnect invalidates pending challenges. Reuse existing linking, provider encryption, deterministic routing/idempotency and outbound intents for welcome/plan-ready; no phone login/recovery, marketing or Phase C policy. Exact rules: [whatsapp-ownership-verification.md](whatsapp-ownership-verification.md).
 
 ### Session 2026-10-06
 

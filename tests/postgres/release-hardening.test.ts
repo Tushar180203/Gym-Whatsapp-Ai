@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Pool } from "pg";
 import { PostgresVerticalSliceApp } from "../../packages/persistence/src/postgres.js";
 import { WhatsAppInboundAdapter } from "../../packages/messaging/src/index.js";
+import { hashChallenge } from "../../packages/messaging/src/whatsapp/link-challenge.js";
 import { AiProviderError } from "../../packages/ai/src/interfaces.js";
 const url = process.env.TEST_DATABASE_URL;
 const pgDescribe = url || process.env.REQUIRE_POSTGRES_TESTS === "1" ? describe : describe.skip;
@@ -15,7 +16,7 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
     interpret.mockReset(); app = new PostgresVerticalSliceApp({ connectionString: scoped, interpreter: { interpret } }); await app.migrate();
     owner = await app.signUp("release-owner@example.com", "correct horse battery staple"); other = await app.signUp("release-other@example.com", "correct horse battery staple");
     await app.setPreferredWeightUnit(owner.userId, "KG"); await app.setPreferredWeightUnit(other.userId, "KG"); await app.createRoutine(owner.userId);
-    await send("link", `link ${await app.createLinkToken(owner.userId)}`); await send("start", "start"); await send("accept", "start planned");
+    await send("link", `link ${await app.createLinkToken(owner.userId, hashChallenge("15555550123"))}`); await send("start", "start"); await send("accept", "start planned");
   });
   afterEach(async () => { await app?.close(); });
   function send(id: string, text: string, from = "15555550123", options = {}) {
@@ -23,7 +24,7 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
     const adapter = new WhatsAppInboundAdapter("fixture-secret"); return app.processInbound(adapter.normalize(raw, adapter.sign(raw))[0]!, options);
   }
   it("fresh migrations and reruns preserve data and ordered migration ledger entries", async () => {
-    await app.migrate(); expect((await app.pool.query("select name from schema_migrations order by name")).rows.map(row => row.name)).toEqual(["0001_vertical_slice.sql","0002_us4.sql","0003_us5.sql","0004_us6.sql","0005_us7.sql","0006_release_integrity.sql","0007_core_configuration.sql"]);
+    await app.migrate(); expect((await app.pool.query("select name from schema_migrations order by name")).rows.map(row => row.name)).toEqual(["0001_vertical_slice.sql","0002_us4.sql","0003_us5.sql","0004_us6.sql","0005_us7.sql","0006_release_integrity.sql","0007_core_configuration.sql","0008_whatsapp_transport.sql","0009_whatsapp_ownership.sql","0010_conversation.sql"]);
     expect(await app.currentUser(owner.sessionToken)).toBe(owner.userId);
   });
   it("database rejects foreign owner/parent relationships even without application checks", async () => {
@@ -56,19 +57,21 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
     app = new PostgresVerticalSliceApp({ connectionString: scoped }); await send("recover", "45x10");
     let row = (await app.pool.query("select o.* from outbound_messages o join inbound_messages i on i.id=o.inbound_message_id where i.provider_message_id='recover'")).rows[0];
     expect(row.status).toBe("PENDING"); expect(row.sent_at).toBeNull();
-    await app.pool.query("update outbound_messages set status='SENT',sent_at=now() where id=$1", [row.id]);
+    await app.pool.query("update outbound_messages set status='SENT',sent_at=now(),provider_outbound_message_id='fixture-provider-evidence' where id=$1", [row.id]);
     const before = (await app.pool.query("select * from outbound_messages where id=$1", [row.id])).rows[0];
     await Promise.all(Array.from({ length: 4 }, () => send("recover", "45x10")));
     expect((await app.pool.query("select * from outbound_messages where id=$1", [row.id])).rows[0]).toEqual(before);
     expect((await app.pool.query("select id from workout_sets where user_id=$1", [owner.userId])).rows).toHaveLength(1);
     await expect(send("recover", "45x10", "15555550444")).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
-  it("rolls back provider failure, can retry, and deterministic notation never calls AI", async () => {
+  it("persists safe provider recovery, reuses it on replay, and retries only on a fresh turn", async () => {
     interpret.mockRejectedValueOnce(new AiProviderError("Unavailable", "AI_PROVIDER_ERROR", true));
-    await expect(send("retry", "interpret this unusual request")).rejects.toMatchObject({ retryable: true });
-    expect((await app.pool.query("select id from inbound_messages where provider_message_id='retry'")).rows).toHaveLength(0);
+    const recovery = await send("retry", "interpret this unusual request"); expect(recovery.body).toContain("45x10");
+    expect((await app.pool.query("select processing_status from inbound_messages where provider_message_id='retry'")).rows).toEqual([{ processing_status: "COMPLETED" }]);
+    expect((await app.pool.query("select id from command_executions where user_id=$1", [owner.userId])).rows).toHaveLength(0);
+    expect((await send("retry", "interpret this unusual request")).body).toBe(recovery.body); expect(interpret).toHaveBeenCalledOnce();
     interpret.mockResolvedValueOnce({ schemaVersion: "workout-action.v1", action: { type: "UNKNOWN", reason: "unsupported" }, confidence: "high", requiresClarification: false, rationaleCodes: [], forbiddenDirectMutation: true });
-    await send("retry", "interpret this unusual request"); expect(interpret).toHaveBeenCalledTimes(2);
+    await send("retry-new-turn", "interpret this unusual request"); expect(interpret).toHaveBeenCalledTimes(2);
     await send("set", "45x10"); expect(interpret).toHaveBeenCalledTimes(2);
     expect((await app.pool.query("select id from workout_sets where user_id=$1", [owner.userId])).rows).toHaveLength(1);
   });

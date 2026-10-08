@@ -8,6 +8,6 @@ export default defineConfig({
   webServer: { cwd: fileURLToPath(new URL("../../../", import.meta.url)),
     command: "node node_modules/next/dist/bin/next dev apps/web --webpack --hostname 127.0.0.1 --port 3106",
     url: "http://127.0.0.1:3106", timeout: 120000,
-    env: { DATABASE_URL: parsed.toString(), GEMINI_API_KEY: "offline-no-live-calls", AI_PROVIDER: "gemini", WHATSAPP_APP_SECRET: "us5-web-secret" }
+    env: { DATABASE_URL: parsed.toString(), GEMINI_API_KEY: "offline-no-live-calls", AI_PROVIDER: "gemini", WHATSAPP_APP_SECRET: "us5-web-secret", WHATSAPP_PROVIDER: "disabled", WHATSAPP_BUSINESS_NUMBER: "+15551234567", WHATSAPP_PHONE_NUMBER_ID: "123456", WHATSAPP_RECIPIENT_ENCRYPTION_KEY: "ab".repeat(32) }
   }
 });

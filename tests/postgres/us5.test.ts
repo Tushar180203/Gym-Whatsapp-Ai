@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { PostgresVerticalSliceApp } from "../../packages/persistence/src/postgres.js";
 import { WhatsAppInboundAdapter } from "../../packages/messaging/src/index.js";
+import { hashChallenge } from "../../packages/messaging/src/whatsapp/link-challenge.js";
 import { MockStructuredOutputClient, StaticPromptRegistry, StructuredIntentInterpreter } from "../../packages/ai/src/index.js";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -18,7 +19,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
     await app.migrate(); next = 0;
     ({ userId, sessionToken } = await app.signUp("us5@example.com", "correct horse battery staple"));
     await app.setPreferredWeightUnit(userId, "LB"); await app.createRoutine(userId);
-    await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("start planned");
+    await send(`link ${await app.createLinkToken(userId, hashChallenge("15555550123"))}`); await send("start"); await send("start planned");
   });
   afterEach(async () => { await app?.close(); });
   async function send(text: string, messageId = `us5-${next++}`, crash = false) {

@@ -1,5 +1,31 @@
 # Quickstart: Plan Validation Guide
 
+## Domain Conversation Validation
+
+Use Node 22 and apply ordered migrations through `0010_conversation.sql` with `npm run db:migrate` before running the updated application. Existing users/workouts safely initialize conversation state on their next verified inbound message.
+
+```bash
+npm run test:conversation
+# TEST_DATABASE_URL must point to a disposable test database, never the application database.
+npm run test:conversation:postgres
+npm run test:postgres
+npm run eval
+```
+
+The PostgreSQL suite executes twenty semantic scenario families plus long messy conversation, nested clarification, short answers, cancellation/stale/replay/restart/foreign-target and upgrade tests. Fixtures assert state and forbidden mutations rather than exact conversational copy. Mock-provider tests require no key/network access; live provider commands remain opt-in. Missing or unsupported intent gets contextual recovery, not a generic action error. No Phase C policy changes are implied.
+
+## Self-Service WhatsApp Ownership
+
+Apply migrations through 0009 before using number verification. Set public `WHATSAPP_BUSINESS_NUMBER` to the actual business WhatsApp destination in E.164 (not the phone-number ID); existing Meta secret, signature and recipient-encryption configuration remains unchanged. No real credentials belong in .env.example.
+
+On `/onboarding` or `/routines`, enter an international number, explicitly opt in to workout messaging, and choose Verify on WhatsApp. Open WhatsApp uses a configured wa.me destination with `LINK <code>`. Send from the entered account within ten minutes. Only authenticated matching sender proof makes the status WhatsApp connected; typed numbers never establish recipients. Reload preserves pending status, not the code; choose Generate new verification explicitly if needed. To change a verified number choose Change WhatsApp number, prove the new number, and only then is the old link disconnected. Disconnect WhatsApp requires explicit confirmation.
+
+Run `TEST_DATABASE_URL=postgresql://LOCAL_TEST_DATABASE npm run test:whatsapp:ownership` for database/API ownership, replay/concurrency, rollback and populated migration coverage; `npm run test:whatsapp:transport` includes real application HTTP APIs -> signed webhook -> controlled provider -> workout completion. Run `npm run test:whatsapp:web` with the same test database for real desktop/mobile onboarding and number change/disconnect. Normal acceptance is offline: signed fixtures/fake provider, no live Meta/Gemini credentials or messages. See [ownership design](whatsapp-ownership-verification.md) for trust boundaries and bounded request/manual notification delivery.
+
+## Phase B Transport Validation
+
+Apply ordered migrations through 0008 before enabling `WHATSAPP_PROVIDER=cloud_api`. Configure the placeholder variables in .env.example through server-only secrets. Run `TEST_DATABASE_URL=postgresql://LOCAL_TEST_DATABASE npm run test:whatsapp:transport` for signed HTTP application -> PostgreSQL -> controllable provider acceptance, including replay/retry/restart. Normal tests require no live credentials. Operator report/retry and the deliberately opt-in, manually initiated live smoke are documented in [phase-b-transport.md](phase-b-transport.md). No historical false SENT record is automatically replayed; no Phase C decision is implied.
+
 This guide describes the validation scenarios the implementation should eventually support. It is not an implementation task list and does not include source code.
 
 ## Prerequisites

@@ -1,10 +1,18 @@
 # Implementation Plan: WhatsApp Workout Companion
 
+## Approved Conversation Extension (2026-10-08)
+
+The user's domain conversational robustness request is implemented as a domain `ConversationOrchestrator`, typed state/grammar/reference/response modules and a PostgreSQL application adapter. This is an in-process extension of the approved modular monolith, not another interpreter service, agent, queue or transport. See [conversation-orchestration.md](conversation-orchestration.md). T130-T135 trace the extension; existing release/privacy decisions remain unchanged.
+
 **Branch**: `001-whatsapp-workout-companion` | **Date**: 2026-10-06 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-whatsapp-workout-companion/spec.md`
 
 ## Summary
+
+Ownership verification extension (2026-10-08): [whatsapp-ownership-verification.md](whatsapp-ownership-verification.md) binds existing link challenges to an explicitly consented claimed number, then trusts only the matching authenticated Meta sender. Migration 0009 preserves proven links and invalidates unbound pending tokens. Existing provider-private recipient encryption, owner transactions, outbound intent delivery and idempotency are reused; no Phase C policy or new infrastructure.
+
+Phase B transport decision (2026-10-08): Meta Cloud API implementation uses provider-independent MessagingTransport, encrypted provider-boundary recipient resolution, durable bounded attempts and minimal authenticated receipts. Legacy false SENT and unknown delivery cannot automatically replay. See [phase-b-transport.md](phase-b-transport.md) and migration 0008; deployment/privacy approval remains external, no Phase C policy or new infrastructure.
 
 Build a WhatsApp-first workout companion with a web product for account setup, routine configuration, history, analytics, edits, export, and deletion. Use an end-to-end TypeScript monorepo so web, API, WhatsApp, AI interpretation, persistence, analytics, and evaluations share one provider-independent workout domain model.
 

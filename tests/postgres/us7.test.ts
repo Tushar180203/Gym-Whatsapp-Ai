@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { PostgresVerticalSliceApp } from "../../packages/persistence/src/postgres.js";
 import { WhatsAppInboundAdapter } from "../../packages/messaging/src/index.js";
+import { hashChallenge } from "../../packages/messaging/src/whatsapp/link-challenge.js";
 const url = process.env.TEST_DATABASE_URL;
 const pgDescribe = url || process.env.REQUIRE_POSTGRES_TESTS === "1" ? describe : describe.skip;
 pgDescribe("US7 PostgreSQL portable export and confirmed data control", () => {
@@ -13,7 +14,7 @@ pgDescribe("US7 PostgreSQL portable export and confirmed data control", () => {
     app = new PostgresVerticalSliceApp({ connectionString: scoped }); await app.migrate(); next = 0;
     owner = await app.signUp("us7-owner@example.com", "correct horse battery staple"); other = await app.signUp("us7-other@example.com", "correct horse battery staple");
     for (const user of [owner, other]) { await app.setPreferredWeightUnit(user.userId, "LB"); await app.createRoutine(user.userId); }
-    await send(`link ${await app.createLinkToken(owner.userId)}`); await send("start"); await send("start planned"); workoutId = (await app.activeWorkout(owner.userId))!.id;
+    await send(`link ${await app.createLinkToken(owner.userId, hashChallenge("15555550123"))}`); await send("start"); await send("start planned"); workoutId = (await app.activeWorkout(owner.userId))!.id;
     await send("45 lb x 10,45 lb x 9,45 lb x 8", "original-log"); await send("done");
     exerciseId = (await app.pool.query("select exercise_identity_id from workout_sets where user_id=$1 limit 1", [owner.userId])).rows[0].exercise_identity_id;
     await app.classifyExercise(owner.sessionToken, exerciseId, { classifications: [{ muscleGroup: "Chest", status: "CONFIRMED", role: "PRIMARY" }] });
@@ -82,14 +83,14 @@ pgDescribe("US7 PostgreSQL portable export and confirmed data control", () => {
     expect(await app.history(owner.userId)).toHaveLength(1); expect((await app.dataReview(owner.sessionToken)).requests.map(row => row.status)).toContain("STALE");
   });
   it("confirmed account deletion blocks sessions, linked messages and old link tokens; only exact completed receipt can replay", async () => {
-    const link = await app.createLinkToken(owner.userId), deletion = await request("DELETE_ACCOUNT");
+    const link = (await app.createWebLinkToken(owner.sessionToken, { phoneNumber: "+15555550124", consent: true, change: true })).token, deletion = await request("DELETE_ACCOUNT");
     const completed = await app.confirmDeletion(owner.sessionToken, deletion.id, { confirm: true }); await restart();
     expect(await app.confirmDeletion(owner.sessionToken, deletion.id, { confirm: true })).toEqual(completed);
     await expect(app.currentUser(owner.sessionToken)).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
     await expect(app.requestExport(owner.sessionToken, { idempotencyKey: "new" })).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
     await expect(app.startNextWorkout(owner.userId)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(send("start")).rejects.toMatchObject({ code: "UNLINKED_IDENTITY" });
-    await expect(send(`link ${link}`)).rejects.toMatchObject({ code: "INVALID_LINK_TOKEN" });
+    expect((await send(`link ${link}`)).verificationRejected).toBe(true);
     await expect(send("45 lb x 10,45 lb x 9,45 lb x 8", "original-log")).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(app.confirmDeletion(other.sessionToken, deletion.id, { confirm: true })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await app.currentUser(other.sessionToken)).toBe(other.userId);

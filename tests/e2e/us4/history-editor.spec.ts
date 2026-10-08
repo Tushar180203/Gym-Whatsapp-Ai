@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { Pool } from "pg";
 import { PostgresVerticalSliceApp } from "../../../packages/persistence/src/postgres.js";
 import { WhatsAppInboundAdapter } from "../../../packages/messaging/src/index.js";
+import { hashChallenge } from "../../../packages/messaging/src/whatsapp/link-challenge.js";
 
 let app: PostgresVerticalSliceApp, sessionToken: string, workoutId: string, userId: string;
 test.beforeEach(async ({ context }) => {
@@ -14,7 +15,7 @@ test.beforeEach(async ({ context }) => {
   sessionToken = auth.sessionToken; userId = auth.userId;
   await app.setPreferredWeightUnit(userId, "LB"); await app.createRoutine(userId);
   let n = 0;
-  for (const text of [`link ${await app.createLinkToken(userId)}`, "start", "start planned", "45x10,45x9", "finish", "save completed"]) {
+  for (const text of [`link ${await app.createLinkToken(userId, hashChallenge("15555550999"))}`, "start", "start planned", "45x10,45x9", "finish", "save completed"]) {
     const raw = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "business", changes: [{ value: { metadata: { phone_number_id: "phone-web" }, messages: [{ id: `web-${n++}`, from: "15555550999", text: { body: text } }] } }] }] });
     const adapter = new WhatsAppInboundAdapter("web-test-secret"); await app.processInbound(adapter.normalize(raw, adapter.sign(raw))[0]!);
   }

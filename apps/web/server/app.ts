@@ -5,6 +5,7 @@ import { RateLimitService } from "../../../packages/domain/src/rate-limit/rate-l
 import { observe } from "./observability.js";
 const inboundLimit = new RateLimitService(120);
 const aiLimit = new RateLimitService(20);
+const linkLimit = new RateLimitService(20);
 
 let postgresApp: PostgresVerticalSliceApp | null = null;
 
@@ -15,6 +16,7 @@ export function productionApp(): PostgresVerticalSliceApp {
     interpreter: new StructuredIntentInterpreter(createStructuredOutputClient(), new StaticPromptRegistry()),
     observe,
     checkInboundLimit: key => inboundLimit.check(key),
+    checkLinkLimit: key => linkLimit.check(key),
     checkAiLimit: key => aiLimit.check(key)
   });
   return postgresApp;

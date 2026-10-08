@@ -4,6 +4,7 @@ import { aliasRequestSchema, customExerciseSchema, exerciseRenameSchema, profile
 import { DomainError } from "./store.js";
 import { Us4Commands } from "./us4.js";
 import { z } from "zod";
+import { WhatsAppLinks, queuePlanReady } from "./whatsapp-links.js";
 
 export type ConfiguredExercise = { id: string; displayName: string; defaultLoadSemantics: string; version: number; aliases: string[]; custom: boolean };
 export type ConfiguredRoutine = {
@@ -131,6 +132,7 @@ export class Configuration {
     const nextId = cursor && ids.includes(cursor.next_session_template_id) ? cursor.next_session_template_id : ids[0]!;
     await this.db.query(`insert into routine_sequence_cursors(id,routine_id,user_id,next_session_template_id,cursor_sequence_index) values($1,$2,$3,$4,$5)
       on conflict(routine_id) do update set next_session_template_id=excluded.next_session_template_id,cursor_sequence_index=excluded.cursor_sequence_index,version=routine_sequence_cursors.version+1`, [randomUUID(), id, this.userId, nextId, ids.indexOf(nextId)]);
+    await queuePlanReady(this.db, this.userId);
     return this.routine(id);
   }
   async archiveRoutine(routineId: string, input: unknown) {
@@ -143,11 +145,10 @@ export class Configuration {
     return { archived: true };
   }
   async links() {
-    return (await this.db.query("select id,linked_at as \"linkedAt\",revoked_at as \"revokedAt\" from whatsapp_identity_links where user_id=$1 order by linked_at desc", [this.userId])).rows;
+    return new WhatsAppLinks(this.db, this.userId).status();
   }
-  async revokeLink(linkId: string) {
-    const rows = await this.db.query("update whatsapp_identity_links set revoked_at=coalesce(revoked_at,clock_timestamp()) where id=$1 and user_id=$2 returning id", [linkId, this.userId]);
-    if (!rows.rows.length) throw new DomainError("Link not found", "NOT_FOUND");
-    return { revoked: true };
+  async revokeLink(linkId: string, input: unknown) {
+    z.object({ confirm: z.literal(true) }).strict().parse(input);
+    return new WhatsAppLinks(this.db, this.userId).revoke(linkId);
   }
 }

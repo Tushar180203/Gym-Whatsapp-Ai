@@ -71,6 +71,7 @@ export class DataControls {
       return this.view((await this.db.query("select * from data_control_requests where id=$1", [id])).rows[0]);
     }
     const sets = await this.db.query("update workout_sets set status='DELETED' where user_id=$1 and status <> 'DELETED'", [this.userId]);
+    await this.db.query("delete from conversation_states where user_id=$1", [this.userId]);
     const workouts = await this.db.query("update workout_sessions set status='DISCARDED',discarded_at=coalesce(discarded_at,clock_timestamp()),data_deleted_at=clock_timestamp(),active_session_exercise_id=null,completion_choice_pending=false,version=version+1 where user_id=$1 and data_deleted_at is null", [this.userId]);
     await this.db.query("update users set data_control_generation=data_control_generation+1 where id=$1", [this.userId]);
     await this.db.query("update pending_confirmations set status='STALE' where user_id=$1 and status='PENDING'", [this.userId]);
@@ -78,8 +79,8 @@ export class DataControls {
     if (row.type === "DELETE_ACCOUNT") {
       await this.db.query("update users set deleted_at=clock_timestamp() where id=$1", [this.userId]);
       await this.db.query("update auth_sessions set invalidated_at=clock_timestamp() where user_id=$1 and invalidated_at is null", [this.userId]);
-      await this.db.query("update whatsapp_identity_links set revoked_at=clock_timestamp() where user_id=$1 and revoked_at is null", [this.userId]);
-      await this.db.query("update account_link_tokens set consumed_at=clock_timestamp() where user_id=$1 and consumed_at is null", [this.userId]);
+      await this.db.query("update whatsapp_identity_links set status='REVOKED',revoked_at=clock_timestamp() where user_id=$1 and revoked_at is null", [this.userId]);
+      await this.db.query("update account_link_tokens set status='SUPERSEDED' where user_id=$1 and status='PENDING'", [this.userId]);
     }
     const summary = { operation: row.type, outcome: "COMPLETED", workoutsAffected: workouts.rowCount, setsAffected: sets.rowCount, mode: "SOFT_DELETE" };
     return this.view((await this.db.query("update data_control_requests set status='COMPLETED',confirmed_at=clock_timestamp(),completed_at=clock_timestamp(),audit_summary=$2 where id=$1 returning *", [id, summary])).rows[0]);

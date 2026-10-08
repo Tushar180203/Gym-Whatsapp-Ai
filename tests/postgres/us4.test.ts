@@ -6,6 +6,7 @@ import { StructuredIntentInterpreter } from "../../packages/ai/src/structured-in
 import { StaticPromptRegistry } from "../../packages/ai/src/prompt-registry.js";
 import { WhatsAppInboundAdapter } from "../../packages/messaging/src/index.js";
 import type { ProposedAction } from "../../packages/contracts/src/ai/actions.js";
+import { hashChallenge } from "../../packages/messaging/src/whatsapp/link-challenge.js";
 
 const url = process.env.TEST_DATABASE_URL;
 const pgDescribe = url || process.env.REQUIRE_POSTGRES_TESTS === "1" ? describe : describe.skip;
@@ -22,7 +23,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     await app.migrate(); next = 0;
     userId = (await app.signUp("us4@example.com", "correct horse battery staple")).userId;
     await app.setPreferredWeightUnit(userId, "LB"); await app.createRoutine(userId);
-    await send(`link ${await app.createLinkToken(userId)}`); await send("start"); await send("start planned");
+    await send(`link ${await app.createLinkToken(userId, hashChallenge("15555550123"))}`); await send("start"); await send("start planned");
   });
   afterEach(async () => { await app?.close(); });
   function propose(action: ProposedAction) {

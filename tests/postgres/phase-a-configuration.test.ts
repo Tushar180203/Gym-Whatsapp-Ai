@@ -17,6 +17,23 @@ pgDescribe("Phase A owner-scoped configuration", () => {
     other = await app.signUp("setup-other@example.com", "correct horse battery staple");
   });
   afterEach(async () => { await app?.close(); });
+  it("duplicate signup fails safely without changing the existing account/session", async () => {
+    await expect(app.signUp("SETUP-OWNER@example.com", "different correct battery staple")).rejects.toMatchObject({ code: "SIGNUP_UNAVAILABLE" });
+    expect(await app.currentUser(owner.sessionToken)).toBe(owner.userId);
+    expect((await app.pool.query("select count(*)::int as n from users")).rows[0].n).toBe(2);
+    expect((await app.pool.query("select count(*)::int as n from auth_sessions")).rows[0].n).toBe(2);
+  });
+  it("session persistence failure rolls back account creation", async () => {
+    await app.pool.query("create function reject_signup_session() returns trigger language plpgsql as $$ begin raise exception 'test session failure'; end $$");
+    await app.pool.query("create trigger signup_session_failure before insert on auth_sessions for each row execute function reject_signup_session()");
+    try {
+      await expect(app.signUp("rollback@example.com", "correct horse battery staple")).rejects.toThrow("test session failure");
+      expect((await app.pool.query("select count(*)::int as n from users")).rows[0].n).toBe(2);
+      expect((await app.pool.query("select count(*)::int as n from auth_sessions")).rows[0].n).toBe(2);
+    } finally {
+      await app.pool.query("drop trigger signup_session_failure on auth_sessions");
+    }
+  });
   const routineInput = () => ({ name: "My rotation", schedule: { intendedWorkoutsPerWeek: 3, plannedDays: ["MON", "WED", "FRI"] }, sessions: [
     { name: "Push", exercises: [{ exerciseIdentityId: "global_barbell_bench_press", plannedSetCount: 3, repTargetMin: 8, repTargetMax: 10 }] },
     { name: "Legs", exercises: [{ exerciseIdentityId: "global_leg_extension", plannedSetCount: 2, repTargetMin: 10 }] }

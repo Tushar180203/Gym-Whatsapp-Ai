@@ -31,4 +31,5 @@ export type NormalizedWhatsAppMessage = {
   providerUserIdentityHash: string;
   text: string;
   rawPayloadHash: string;
+  providerSentAt?: number;
 };

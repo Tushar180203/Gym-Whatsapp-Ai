@@ -1,5 +1,9 @@
 # Contract: AI Structured Actions
 
+## Conversation Context (2026-10-08)
+
+Prompt v5 adds bounded `conversationMode`, pending operation/slot, current exercise, known owner-visible names/confirmed aliases and allowed action types. These are data, never instructions or permission. The local `workout-action.v1` ProposedActionEnvelope and Gemini provider schema remain unchanged. Low confidence or missing targets clarify; unsupported numeric proposals cannot enter a continuation. Pending answers are interpreted deterministically before AI. The orchestrator owns memory; Gemini never authors ConversationState, confirmations or authoritative factual values. Normal fixtures use mocks, with live provider evaluation still explicitly opt-in.
+
 The AI layer returns proposed actions only. These actions are untrusted until local schema validation, authorization, domain validation, confirmation policy, and idempotent command execution succeed. `confidence` is advisory only and cannot bypass authorization, domain validation, required clarification, permanent-change confirmation, or destructive-action confirmation.
 
 ## Envelope

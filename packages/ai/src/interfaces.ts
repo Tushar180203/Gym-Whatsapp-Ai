@@ -14,6 +14,10 @@ export type AiInterpretationContext = {
   };
   knownExerciseRefs?: string[];
   confirmedAliases?: Array<{ alias: string; exerciseRef: string }>;
+  conversationMode?: "IDLE" | "WORKOUT_PROPOSED" | "WORKOUT_ACTIVE" | "WORKOUT_FINISH_PENDING";
+  pendingAction?: string | null;
+  pendingOperation?: { type: "REPLACE_EXERCISE"; sourceExercise: string | null; replacementExercise: string | null; scope: string; awaiting: string };
+  allowedActionTypes?: string[];
 };
 
 export type IntentInterpretRequest = {

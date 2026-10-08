@@ -1,5 +1,163 @@
 # Release Validation Results
 
+## Domain Conversation Orchestration (2026-10-08)
+
+Approved robustness extension only; T130-T135. Node 22.23.3, PostgreSQL 14.24. Existing ownership/transport worktree changes and local secrets preserved. No live Gemini/Meta calls, new agents, queues, transcript retention or Phase C decisions.
+
+| Validation | Final result |
+|---|---|
+| npm run lint | PASS (existing TypeScript-based lint command) |
+| npm run typecheck | PASS |
+| npm run test | 255 passed; 138 intentionally skipped (137 PG cases executed separately, one opt-in diagnostic) |
+| npm run test:integration | 54/54 passed |
+| npm run test:e2e | 2/2 fast vertical-slice cases passed |
+| npm run eval | 79 passed, one opt-in diagnostic skipped; 89/89 eval-case.v1 fixtures passed |
+| npm run test:conversation | 72/72 passed, including 336 generated lifting grammar variants |
+| npm run test:postgres | 137/137 passed across 12 files |
+| npm run test:conversation:postgres | 33/33 passed: 20 scenario families and 13 extended regressions |
+| Long messy conversation | PASS, 23 turns; exact corrected persisted reps [10,8,15,15]; no routine mutation; zero AI calls |
+| Restart / replay / older events | PASS: typed parent/child and numeric repair survive restart; concurrent duplicate confirmation applies once; older event leaves state unchanged |
+| AI failure / no-AI / prompt injection | PASS: local invalid output and false safety flag cannot mutate; permanent change still confirms; common lifting/facts/social bypass AI |
+| npm run test:whatsapp:web | 2/2 actual UI/API controlled-provider cases passed at 1280px and 390px |
+| Fresh migrations | All ten migrations apply to empty test schemas, including fresh vertical-slice database tables; ordered ledger/rerun tests pass |
+| Populated upgrade | PASS: removing only 0010/state ledger entry, rerunning migrations preserves existing workout/sets and safely creates missing conversation state |
+| Local runtime migration | 0010 applied using existing privately preserved configuration; developer server restored on port 3110 |
+| npm run build | PASS under NODE_ENV=production |
+| Secret/privacy scan | 329 repository files; zero configured-secret/private-key matches; no staged files; .env ignored and untracked |
+| git diff --check | PASS |
+
+Twenty semantic families executed 96 user turns with two mock-provider calls (2.1%; 97.9% deterministic bypass). This is measured fixture coverage, not a promise about all real-world language. Seven new provider-independent fixtures bring the executable eval total from 82 to 89. Live model quality was not evaluated.
+
+Invariants cover one active workout, unchanged permanent templates for session-only changes, protected permanent confirmation, no ambiguous/foreign-target mutation, duplicate-command at-most-once behavior, read-only facts/greetings, AI failure without workout mutation, and nested parent preservation. Missing reps/load, malformed references, ambiguous field repair, stale targets and unsupported compounds recover without fabricated data. Exact identity lookup remains owner-scoped beyond the bounded prompt list; newest-set context and exact current-exercise counts avoid truncated-history assumptions.
+
+Initial checks exposed compact-unit normalization (45kgsx10), outdated failure/response expectations, and bounded context lookup edges. Fixed the actual parser/context/safety behavior and strengthened durable no-mutation assertions; no requirements or local Zod validation were weakened. A production build first inherited the development server's NODE_ENV; rerunning with the correct production build environment passed. No required test remains failing.
+
+Implementation/file map and remaining conversational limitations: [conversation-orchestration.md](conversation-orchestration.md). Existing privacy, deployment and live-provider release decisions remain unresolved; completing this layer does not approve public release.
+
+## WhatsApp Ownership Verification (2026-10-08)
+
+Node 22.23.3; PostgreSQL 14.24. Existing Phase B worktree changes were preserved. This pass completes only number ownership/linking; no live Meta/Gemini calls or Phase C decisions.
+
+| Validation | Final result |
+|---|---|
+| npm run lint | PASS |
+| npm run typecheck | PASS |
+| npm run test | 181 passed, 103 intentionally skipped (102 PostgreSQL cases separately executed plus opt-in diagnostic) |
+| npm run test:integration | 54/54 passed |
+| npm run test:e2e | 2/2 passed |
+| npm run eval | 79 passed, 1 opt-in diagnostic skipped; 82/82 executable fixtures passed |
+| npm run test:postgres | 102/102 passed across 11 files |
+| Ownership PostgreSQL cases | 12/12 passed (part of full PostgreSQL run) |
+| Controlled HTTP Meta provider | PASS, actual signup/profile/routine/challenge APIs -> signed LINK -> encrypted recipient -> exactly-once welcome/plan -> start/log/finish/retry |
+| npm run test:whatsapp:web | 2/2 desktop/mobile cases passed, 1280px and 390px |
+| npm run test:phase-a:web | 5/5 existing onboarding/selection/ownership cases passed |
+| npm run test:release:web | 2/2 signed workout/history/analytics/disconnect cases passed |
+| npm run build | PASS |
+| Fresh PostgreSQL database | All nine migrations applied in order to ownership_fresh_20261008 |
+| Populated Phase B upgrade | PASS; verified links/ciphertext preserved, unbound outstanding tokens superseded, rerun safe |
+| Local development database upgrade | Applied through 0009 before restoring dev server |
+| Secret/privacy scan | 315 repository files scanned; zero configured-secret/private-key matches; no staged files; .env ignored and untracked |
+| git diff --check | PASS |
+
+Tests initially exposed a missing outbound createdAt column, test-schema/ledger expectations needing the new constraints/migration, and outdated browser form locators. Fixed underlying schema/fixtures, reran successfully; no assertions weakened. Composite challenge/link/inbound/outbound owner keys now additionally prevent the old fixture's cross-user direct SQL link reassignment. A new retry test proves plan-ready stays pending until welcome has provider acceptance. No failing required tests remain.
+
+### Behaviors And Boundaries
+
+- Explicit international claimed-number parsing uses libphonenumber-js with no default country, expected SHA-256 digits and masked display. Possible-number validation is not proof of assignment/ownership.
+- Existing AccountLinkToken holds hashed 128-bit case-insensitive code, ten-minute expiry, supersession, opt-in/change evidence and bounded audit attempts. Existing process-local limiter bounds LINK at 20/minute per provider-scoped sender; durable creation limit is ten/ten minutes per owner. Edge/distributed limits remain an existing operations decision.
+- PENDING exists only as a challenge; VERIFIED/REVOKED links gate commands, recipients and notifications. Atomic proof uses authenticated sender data, not the form. Wrong sender preserves the legitimate challenge; other-owner identity cannot transfer; deleted users cannot verify. Revoke and number replacement serialize with commands/delivery and preserve appropriate audit metadata.
+- LINK and unverified workout commands make zero Gemini calls. Code/address plaintext is absent from challenge/inbound persistence; final address is AES-256-GCM ciphertext bound to provider identity. No secrets or plaintext recipients are added to exports or routine logs.
+- Welcome is the single logical LINK response keyed by link ID. Plan-ready is a unique link/routine/version intent; it waits for provider-accepted welcome. Request/manual delivery, bounded safe retries and existing service-window restrictions remain authoritative; no templates/queues introduced.
+- Failed verification has a safe webhook result and leaves the website pending; it does not create a recipient or send normal outbound messages to an unverified identity. Challenge plaintext is returned once: reload preserves masked pending state/expiry, not the code; new issuance is explicit.
+- Public WHATSAPP_BUSINESS_NUMBER must be configured with the real business destination before live self-service use. Never derive it from Phone Number ID. Live provider acceptance remains opt-in/unrun. No privacy/legal/public-release approval is implied.
+- User confirmed no business WhatsApp destination is currently available. Leave WHATSAPP_BUSINESS_NUMBER unset; live ownership verification/deep-link activation is blocked, not simulated or provisioned by this implementation. Local .env and credentials were not modified.
+
+### Files Touched In This Pass
+
+Configuration/dependency files: `.env.example`, `package.json`, `package-lock.json`, `packages/contracts/src/env.ts`.
+
+Web runtime/UI: `apps/web/server/app.ts`, `apps/web/server/configuration.ts`, `apps/web/app/api/webhooks/whatsapp/route.ts`, `apps/web/app/api/whatsapp/link-token/route.ts`, `apps/web/app/api/whatsapp/link/[id]/route.ts`, `apps/web/components/whatsapp/link-token-manager.tsx`.
+
+Messaging/persistence: `packages/messaging/src/whatsapp/link-challenge.ts`, `packages/messaging/src/whatsapp/link-challenge.test.ts`, `packages/messaging/src/whatsapp/recipient-resolver.ts`, `packages/messaging/src/postgres-delivery.ts`, `packages/persistence/src/whatsapp-links.ts`, `packages/persistence/src/postgres.ts`, `packages/persistence/src/configuration.ts`, `packages/persistence/src/data-controls.ts`, `packages/persistence/migrations/0009_whatsapp_ownership.sql`.
+
+PostgreSQL tests: `tests/postgres/whatsapp-ownership.test.ts`, `tests/postgres/whatsapp-transport.test.ts`, `tests/postgres/postgres-vertical-slice.test.ts`, `tests/postgres/release-hardening.test.ts`, `tests/postgres/phase-a-selection.test.ts`, `tests/postgres/us4.test.ts`, `tests/postgres/us5.test.ts`, `tests/postgres/us6.test.ts`, `tests/postgres/us7.test.ts`.
+
+Integration tests: `tests/integration/ai/inbound-ai-fallback.test.ts`, `tests/integration/messaging/whatsapp-verification.test.ts`.
+
+Browser tests/configs: `tests/e2e/whatsapp/ownership.spec.ts`, `tests/e2e/whatsapp/playwright.config.ts`, `tests/e2e/us1-onboarding-routine.spec.ts`, `tests/e2e/phase-a/playwright.config.ts`, `tests/e2e/core-validation-scenario.spec.ts`, `tests/e2e/release/playwright.config.ts`, `tests/e2e/us4/history-editor.spec.ts`, `tests/e2e/us5/workout-lifecycle.spec.ts`, `tests/e2e/us5/playwright.config.ts`, `tests/e2e/us6-history-analytics.spec.ts`, `tests/e2e/us7-data-controls.spec.ts`.
+
+Feature documentation: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/api.md`, `contracts/messaging.md`, `quickstart.md`, `tasks.md`, `traceability-review.md`, `phase-b-transport.md`, `whatsapp-ownership-verification.md`, `validation-results.md`, `release-readiness.md` under `specs/001-whatsapp-workout-companion/`.
+
+Task reconciliation: T047 newly completed; T038/T039/T046A/T057 amended to actual ownership flow and file paths. No task IDs added/removed; T124 and other open release obligations stay open. Existing reviewer checklist markers remain unchanged.
+
+## Phase B Final Results (2026-10-08)
+
+Phase B transport only. This supersedes earlier transport-absent notes, not the unresolved Phase C release gates. Node **22.23.3**, PostgreSQL **14.24**; Node 22 was first on PATH for every validation script. No live WhatsApp/Gemini calls, new workout behavior, queues or privacy policy were introduced.
+
+| Command / evidence | Final result |
+|---|---|
+| npm run lint | PASS (existing TypeScript-based lint; T007 still open) |
+| npm run typecheck | PASS |
+| npm run test | 164 passed, 91 skipped (90 PostgreSQL executed separately + one opt-in diagnostic) |
+| npm run test:integration | 46/46 passed |
+| npm run test:e2e | 2/2 passed (existing Vitest vertical slices, not new browser acceptance) |
+| npm run eval | 71 passed, one diagnostic skipped; 82/82 executable fixtures |
+| npm run test:postgres | 90/90 passed, ten files, bounded two-worker scheduling |
+| npm run test:whatsapp:transport | 14/14 passed against fresh acceptance database |
+| npm run build | PASS |
+| git diff --check | PASS |
+| Empty database migration | db:migrate applied 0001-0008 successfully to phase_b_transport_acceptance_20261008 |
+| Populated upgrade | 0007 -> 0008 tested with historic false SENT and PENDING; reruns preserve quarantine/data |
+| Secret-pattern scan | 307 tracked/untracked nonignored files, no suspects; zero staged files; .env confirmed ignored |
+| Existing local preview | /onboarding HTTP 200 at http://127.0.0.1:3110 |
+
+Controlled HTTP acceptance uses the actual GET/POST route handlers served over loopback, signed provider-shaped requests, real PostgreSQL, real recipient encryption/resolution and the Cloud API adapter talking to a controllable HTTP provider. It consumes a real link token (no seeded identity), proposes/starts, logs sets, finishes and retrieves completed history. Correct recipient/body/logical ID, one mutation/response/send on duplicate delivery, safe 429 retry, no resend after acceptance and zero deterministic AI calls are asserted. Other PostgreSQL cases cover correction/confirmation replay, retry cap, command-before-outbound restart, in-flight ownership locking, unknown timeout/restart, receipt-before-timeout race, permanent failure, missing recipient, cross-owner/deleted/generation blocking, ciphertext/export isolation and legacy no-replay. Thirteen unit tests cover protection, challenge, response/failure/window handling, real abort normalization and redaction; four HTTP/config integration tests cover validation and no-mutation authenticity rejection.
+
+Initial verification failures were corrected without weakening behavior assertions: the new HTTP acceptance test assumed a numeric response rather than the existing persisted `Logged set`; its set semantics initially assumed unspecified rather than the approved global bench TOTAL_LOAD default. It now asserts the exact stored reply and actual approved load/reps/unit semantics. The existing scripted SQL test double was updated to return the newly required outbound `RETURNING id`, with original AI safety assertions retained. One pre-existing populated-migration test timed out under ten-worker CPU contention; test:postgres now bounds workers at two, with unchanged assertions and 5-second timeout. Final full and dedicated runs pass. Generated next-env build-path churn was restored to the original development paths.
+
+Task count stays 134: checked 114 -> 119. Completed T014/T050/T056/T059/T125; no IDs added, removed or moved. T046C/T048 remain partial; T124 is NOT marked complete based on controlled transport. Other pre-existing unchecked tasks remain untouched. Read-only requirements/readiness checklist gates remain 16/16 and 44/44. No extension hooks are registered.
+
+Live acceptance NOT RUN. The opt-in test:whatsapp:live command verifies challenge and one manually initiated inbound/outbound test exchange, never auto-sends additional messages. Meta credentials/provisioning, actual handset observation, configured Graph-version/callback confirmation, provider processing approval, recipient-key custody/rotation, hosting/edge controls and Phase C physical/backup erasure, retention and propagation decisions remain open. Ambiguous delivery cannot promise eventual delivery; operator report/manual safe retry is intentional. Large replies exceeding 4096 characters fail durably rather than being silently truncated; large-batch request deadlines and performance budgets still require production review. No public-release approval or legal-compliance claim.
+
+Local self-service MVP complete: **YES**. Controlled end-to-end transport: **YES**. Live end-to-end WhatsApp MVP acceptance complete: **NO**. Public release ready: **NO**. Implementation stops after Phase B.
+
+### Phase B Files Changed
+
+- .env.example
+- package.json
+- apps/web/app/api/webhooks/whatsapp/route.ts
+- apps/web/server/whatsapp/transport.ts
+- packages/contracts/src/env.ts
+- packages/domain/src/observability/events.ts
+- packages/messaging/src/index.ts
+- packages/messaging/src/transport.ts
+- packages/messaging/src/postgres-delivery.ts
+- packages/messaging/src/whatsapp/inbound-adapter.ts
+- packages/messaging/src/whatsapp/outbound-adapter.ts
+- packages/messaging/src/whatsapp/recipient-resolver.ts
+- packages/messaging/src/whatsapp/verification.ts
+- packages/messaging/src/whatsapp/transport.test.ts
+- packages/persistence/src/postgres.ts
+- packages/persistence/migrations/0008_whatsapp_transport.sql
+- scripts/whatsapp-delivery.ts
+- scripts/whatsapp-live-smoke.ts
+- tests/integration/ai/inbound-ai-fallback.test.ts
+- tests/integration/messaging/whatsapp-verification.test.ts
+- tests/postgres/postgres-vertical-slice.test.ts
+- tests/postgres/release-hardening.test.ts
+- tests/postgres/whatsapp-transport.test.ts
+- specs/001-whatsapp-workout-companion/contracts/api.md
+- specs/001-whatsapp-workout-companion/contracts/messaging.md
+- specs/001-whatsapp-workout-companion/data-model.md
+- specs/001-whatsapp-workout-companion/plan.md
+- specs/001-whatsapp-workout-companion/research.md
+- specs/001-whatsapp-workout-companion/quickstart.md
+- specs/001-whatsapp-workout-companion/tasks.md
+- specs/001-whatsapp-workout-companion/traceability-review.md
+- specs/001-whatsapp-workout-companion/release-readiness.md
+- specs/001-whatsapp-workout-companion/phase-b-transport.md
+- specs/001-whatsapp-workout-companion/validation-results.md
+
 ## Phase A Final Results (2026-10-07)
 
 This section supersedes setup/start gaps and counts in the historical hardening run below. Scope is approved core self-service only; no Phase B/C work, spec changes or new task IDs.

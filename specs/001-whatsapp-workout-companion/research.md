@@ -1,5 +1,19 @@
 # Technical Research: WhatsApp Workout Companion
 
+## Typed Conversation Continuations (2026-10-08)
+
+Decision: one owner-scoped JSONB conversation row, locally Zod-validated, with at most three typed frames, ten-minute logical validity and optimistic version checking inside the existing advisory-locked command transaction. Reuse pending confirmations and domain commands rather than introduce model-owned memory or another confirmation mechanism. Reason: interrupted/nested questions require a durable parent intent; reconstructing it from prior message text is unreliable and expands sensitive chat retention.
+
+Exact current-session identity/confirmed aliases precede bounded typo matching (at most two edits, with a two-edit uniqueness margin). Similar identities never merge. Global factual history continues to require exact confirmed identity resolution. Older authenticated timestamps cannot replace newer state; provider second precision cannot order ties, which remain serialized by the existing owner lock. Gemini keeps its configurable provider interface and unchanged local action schema; prompt v5 receives bounded structured conversation context only.
+
+## Number Ownership Decision (2026-10-08)
+
+Use existing AccountLinkToken/WhatsAppIdentityLink rather than a parallel OTP/identity system. A website number is CLAIMED until an authenticated Meta sender with matching SHA-256 normalized digits consumes a hashed, 128-bit, ten-minute challenge. libphonenumber-js performs international parsing and possible-number validation with no default country; verification, not syntactic validation, proves the account. Only masked display and expected hash persist before proof. Final sender address uses the existing AES-256-GCM transaction boundary. Production verification cannot commit without that writer. Existing proven links remain; legacy unbound outstanding tokens are invalidated. Verified-link-version references prevent old replies following a disconnected identity. Product consent is a timestamp, not a marketing/legal promise. Welcome reuses the logical LINK reply; plan-ready reuses durable outbound intent/delivery per link/routine/version with the existing service window and no worker. Exact rules and acceptance evidence are in [whatsapp-ownership-verification.md](whatsapp-ownership-verification.md).
+
+## Phase B Transport Decisions (2026-10-08)
+
+Meta Cloud API is implemented behind MessagingTransport and a provider-private encrypted recipient resolver. Identity hashes remain internal, never deliverable addressing. AES-256-GCM uses a dedicated configured 32-byte key and identity-bound authentication; no domain/AI/export recipient field. Durable SENDING reservation, bounded request/manual retry and signed receipt metadata preserve one logical response. Ambiguous acceptance and legacy false SENT are quarantined rather than blindly replayed; correlation is not provider-side idempotency. Migration 0008 and the exact configuration/operation/live acceptance boundary are documented in [phase-b-transport.md](phase-b-transport.md). No queue/worker, new feature or Phase C policy was introduced.
+
 ## Phase A Implementation Decisions (2026-10-07)
 
 - Configuration uses the existing PostgreSQL application and checked-out, owner-locked client transaction. Legacy routine fixture creation now also keeps BEGIN/statements/COMMIT on one client; it is not the onboarding acceptance path.

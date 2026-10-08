@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { Pool } from "pg";
 import { PostgresVerticalSliceApp } from "../../packages/persistence/src/index.js";
+import { hashChallenge } from "../../packages/messaging/src/whatsapp/link-challenge.js";
 import { WhatsAppInboundAdapter, type WhatsAppFixturePayload } from "../../packages/messaging/src/index.js";
 
 const connectionString = process.env.TEST_DATABASE_URL;
@@ -31,6 +32,8 @@ async function resetDatabase(pool: Pool): Promise<void> {
   await pool.query(`
     DROP TABLE IF EXISTS
       schema_migrations,
+      conversation_states,
+      outbound_delivery_attempts, whatsapp_recipient_addresses,
     data_control_requests, exercise_muscle_classifications,
       corrections,
       pending_confirmations,
@@ -74,7 +77,7 @@ async function readyUser(app: PostgresVerticalSliceApp): Promise<{ userId: strin
   await expect(app.currentUser(sessionToken)).resolves.toBe(userId);
   await app.setPreferredWeightUnit(userId, "KG");
   await app.createRoutine(userId);
-  return { userId, token: await app.createLinkToken(userId) };
+  return { userId, token: await app.createLinkToken(userId, hashChallenge("15555550123")) };
 }
 
 describePostgres("PostgreSQL deterministic vertical slice", () => {
@@ -115,7 +118,7 @@ describePostgres("PostgreSQL deterministic vertical slice", () => {
       group by c.relname
     `);
     expect(Object.fromEntries(uniques.rows.map((row) => [row.table_name, Number(row.count)]))).toMatchObject({
-      account_link_tokens: 1,
+      account_link_tokens: 2,
       command_executions: 1,
       inbound_messages: 1,
       routine_sequence_cursors: 1,
