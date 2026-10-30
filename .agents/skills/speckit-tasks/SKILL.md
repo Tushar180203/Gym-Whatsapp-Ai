@@ -1,6 +1,6 @@
 ---
 name: "speckit-tasks"
-description: "Generate an actionable, dependency-ordered tasks.md for the feature based on available design artifacts."
+description: "Generate an actionable, dependency-ordered tasks.md for the feature based on available design artifacts. Use after speckit-plan is approved to generate tasks.md."
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "github-spec-kit"

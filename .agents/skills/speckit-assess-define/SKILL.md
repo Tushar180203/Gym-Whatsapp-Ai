@@ -1,6 +1,6 @@
 ---
 name: speckit-assess-define
-description: 'Define the problem: who is affected, what hurts, goals, non-goals, and success metrics'
+description: 'Define the problem: who is affected, what hurts, goals, non-goals, and success metrics. Use after speckit-assess-research when assessing a new product idea.'
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: spec-kit-core

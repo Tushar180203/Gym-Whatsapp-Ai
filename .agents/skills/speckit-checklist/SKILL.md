@@ -1,6 +1,6 @@
 ---
 name: "speckit-checklist"
-description: "Generate a custom checklist for the current feature based on user requirements."
+description: "Generate a custom checklist for the current feature based on user requirements. Use when a feature needs a requirements-quality checklist before planning or review."
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "github-spec-kit"

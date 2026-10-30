@@ -1,0 +1,12 @@
+#!/bin/sh
+# Shared pre-push hook: never push to main directly; run the fast test suite first.
+set -e
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/master)
+      echo "pre-push: direct pushes to $remote_ref are not allowed. Push a branch and open a PR." >&2
+      exit 1 ;;
+  esac
+done
+npm run -s lint
+npx vitest run --reporter=dot

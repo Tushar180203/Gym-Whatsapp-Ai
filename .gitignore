@@ -16,3 +16,25 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# AI agents: personal/local files (team config is committed; see docs/ai-policy.md)
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/*.local.*
+AGENTS.override.md
+.codex/*
+!.codex/config.toml
+.aider*
+.cursor/
+.windsurf/
+.gemini/
+.mcp.local.json
+.aws/
+
+# Isolated reminder browser-test build, alongside a running development server.
+apps/web/.next-reminder-tests/
+
+# Raw live-evaluation logs (large, policy-restricted; summaries live in specs/*/ reports).
+specs/*/evaluation-runs/
+# Local throwaway scripts.
+scripts/.*.tmp.mjs

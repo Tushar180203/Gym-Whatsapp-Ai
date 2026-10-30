@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "default",
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm test)",
+      "Bash(npm test -- :*)",
+      "Bash(npm run test:conversation)",
+      "Bash(npm run test:ai-guards)",
+      "Bash(npm run eval)",
+      "Bash(npm run check:ai-config)",
+      "Bash(npm run verify)",
+      "Bash(npx vitest run:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch --show-current)",
+      "WebFetch(domain:nextjs.org)",
+      "WebFetch(domain:orm.drizzle.team)",
+      "WebFetch(domain:vitest.dev)",
+      "WebFetch(domain:playwright.dev)",
+      "WebFetch(domain:developers.facebook.com)",
+      "WebFetch(domain:ai.google.dev)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh:*)",
+      "Bash(npm install:*)",
+      "Bash(npm i:*)",
+      "Bash(npm ci)",
+      "Bash(npm run db:migrate:*)",
+      "Bash(npm run test:postgres:*)",
+      "Bash(npm run test:whatsapp:live:*)",
+      "Bash(npm run eval:real-provider:*)",
+      "Bash(npm run eval:conversation:live:*)",
+      "Bash(npm run eval:conversation:closure:*)",
+      "Bash(npm run eval:conversation:scale:*)",
+      "Bash(npm run whatsapp:delivery:*)",
+      "Bash(npm run memory:prune:*)",
+      "Bash(psql:*)",
+      "Edit(/.github/**)",
+      "Edit(/.claude/**)",
+      "Edit(/.codex/**)",
+      "Edit(/.agents/**)",
+      "Edit(/.specify/**)",
+      "Edit(/.githooks/**)",
+      "Edit(/AGENTS.md)",
+      "Edit(/CLAUDE.md)",
+      "Edit(/package.json)",
+      "Edit(/package-lock.json)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.development)",
+      "Read(./.env.production)",
+      "Read(./.env.test)",
+      "Read(./**/.env)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./.aws/**)",
+      "Read(./specs/**/evaluation-runs/**)",
+      "Read(./test-results/**)",
+      "Edit(./.env)",
+      "Edit(./**/.env*)",
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(git push --no-verify:*)",
+      "Bash(git config core.hooksPath:*)",
+      "Bash(cat .env:*)",
+      "Bash(printenv:*)",
+      "Bash(sudo:*)",
+      "Bash(npm publish:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "network": {
+      "allowedDomains": ["registry.npmjs.org", "github.com", "api.github.com", "nextjs.org"]
+    },
+    "filesystem": {
+      "denyRead": ["./.env", "./.env.local", "./.env.production", "./.aws", "./specs/001-whatsapp-workout-companion/evaluation-runs"]
+    }
+  },
+  "env": {
+    "OTEL_LOG_USER_PROMPTS": "0"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.mjs", "timeout": 10 }]
+      },
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-paths.mjs", "timeout": 10 }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-ai-config-after-edit.mjs", "timeout": 30 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify-on-stop.mjs", "timeout": 300 }]
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: speckit-assess-shape
-description: 'Shape a concept: solution options, scope, appetite, and trade-offs (no implementation design)'
+description: 'Shape a concept: solution options, scope, appetite, and trade-offs (no implementation design). Use after speckit-assess-define to choose a solution shape and scope.'
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: spec-kit-core

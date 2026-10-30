@@ -1,0 +1,23 @@
+# Code owners — reviews are required on protected main (see docs/ai-policy.md §1).
+# TODO(owner): add the backup owner's GitHub handle next to every line below.
+*                         @Tushar180203
+
+# AI agent configuration, instructions, skills, hooks and policy
+/AGENTS.md                @Tushar180203
+/CLAUDE.md                @Tushar180203
+/apps/web/AGENTS.md       @Tushar180203
+/apps/web/CLAUDE.md       @Tushar180203
+/.agents/                 @Tushar180203
+/.claude/                 @Tushar180203
+/.codex/                  @Tushar180203
+/.specify/                @Tushar180203
+/.githooks/               @Tushar180203
+/.github/                 @Tushar180203
+/docs/ai-*.md             @Tushar180203
+/docs/adr/                @Tushar180203
+/scripts/check-ai-config.mjs     @Tushar180203
+/scripts/scan-staged-secrets.mjs @Tushar180203
+/tests/ai-config/         @Tushar180203
+
+# Data safety
+/packages/persistence/migrations/ @Tushar180203

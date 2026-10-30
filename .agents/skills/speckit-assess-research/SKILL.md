@@ -1,6 +1,6 @@
 ---
 name: speckit-assess-research
-description: Gather evidence — users, market, prior art, and data — to support or challenge the idea
+description: Gather evidence — users, market, prior art, and data — to support or challenge the idea. Use after speckit-assess-intake to gather evidence for or against the idea.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: spec-kit-core

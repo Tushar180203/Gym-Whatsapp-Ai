@@ -1,6 +1,6 @@
 ---
 name: "speckit-specify"
-description: "Create or update the feature specification from a natural language feature description."
+description: "Create or update the feature specification from a natural language feature description. Use when starting a new feature or changing product behaviour, before any plan or code."
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "github-spec-kit"

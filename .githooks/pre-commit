@@ -1,0 +1,11 @@
+#!/bin/sh
+# Shared pre-commit hook (enabled by `npm ci`/`npm install` via the "prepare" script).
+# Blocks secrets, invalid AI config and type errors before they reach a commit.
+set -e
+node scripts/scan-staged-secrets.mjs
+if git diff --cached --name-only | grep -qE '^(AGENTS\.md|CLAUDE\.md|apps/web/(AGENTS|CLAUDE)\.md|\.agents/|\.claude/|\.codex/|\.githooks/|\.github/|docs/)'; then
+  node scripts/check-ai-config.mjs
+fi
+if git diff --cached --name-only | grep -qE '\.(ts|tsx|mjs)$|^package\.json$'; then
+  npm run -s lint
+fi

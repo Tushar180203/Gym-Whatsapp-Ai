@@ -1,6 +1,6 @@
 ---
 name: "speckit-plan"
-description: "Execute the implementation planning workflow using the plan template to generate design artifacts."
+description: "Execute the implementation planning workflow using the plan template to generate design artifacts. Use after the spec is approved (and clarified) to produce the technical plan."
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "github-spec-kit"

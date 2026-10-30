@@ -1,6 +1,6 @@
 ---
 name: "speckit-implement"
-description: "Execute the implementation plan by processing and executing all tasks defined in tasks.md"
+description: "Execute the implementation plan by processing and executing all tasks defined in tasks.md. Use when tasks.md is approved and the human asks to build the feature."
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "github-spec-kit"

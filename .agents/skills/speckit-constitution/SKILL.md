@@ -1,6 +1,6 @@
 ---
 name: "speckit-constitution"
-description: "Create or update the project constitution from interactive or provided principle inputs."
+description: "Create or update the project constitution from interactive or provided principle inputs. Use only when a human asks to amend project principles in .specify/memory/constitution.md."
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "github-spec-kit"
