@@ -89,7 +89,8 @@ default, no `enableAllProjectMcpServers`, no `mcp__*` wildcard allows, HTTPS for
 require approval. `npm run check:ai-config` rejects violations in `.mcp.json`.
 
 New dependencies proposed by agents: justified in the PR, exact version, publisher verified by a human;
-Dependabot and the dependency-review workflow check every PR.
+Dependabot and `npm audit` (security workflow) check every PR; dependency review returns once the
+repository's Dependency graph setting is enabled.
 
 ## 8. Review and attribution
 
