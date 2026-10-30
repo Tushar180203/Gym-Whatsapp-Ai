@@ -42,6 +42,10 @@ export interface ConversationPorts {
   observe?(trace: ConversationTrace): void;
 }
 
+// Rep-count replies such as "10, 10, 9 reps". Linear-time: separators and digits never compete
+// for the same characters (the previous nested form backtracked exponentially on long digit runs).
+export const REPS_LIST = /^\d+(?:[ ,]+\d+)*[ ,]*(?:(?<=[ ,])reps)?$/i;
+
 // Orchestration never writes workout data: every effect passes through an owner-locked command port.
 export class ConversationOrchestrator {
   private state!: ConversationState;
@@ -444,7 +448,7 @@ ${exercise.recordedSets ?? this.context.sets.filter(s => s.exerciseId === exerci
         return this.question("Specify the session-only exercise change.", "UNSUPPORTED_SESSION_CHANGE");
       }
       return this.action({ ...frame.action, scope } as ProposedAction, text);
-    } else if (frame.kind === "SET_DRAFT" && /^(?:\d+[ ,]*)+(?: reps)?$/i.test(text)) {
+    } else if (frame.kind === "SET_DRAFT" && REPS_LIST.test(text)) {
       const reps = numericEvidence(text);
       if (reps.length !== frame.count || reps.some(n => !Number.isInteger(n) || n < 1)) return this.question(`Send ${frame.count} positive rep count${frame.count === 1 ? "" : "s"}, one for each set.`, "INCOMPLETE_REPS");
       if (frame.exerciseId !== this.context.workout?.activeExerciseId) return this.question("The active exercise changed. Send the load and reps for this exercise.", "STALE_DRAFT");

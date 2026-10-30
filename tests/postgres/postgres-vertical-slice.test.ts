@@ -32,6 +32,7 @@ async function resetDatabase(pool: Pool): Promise<void> {
   await pool.query(`
     DROP TABLE IF EXISTS
       schema_migrations,
+      conversation_turns,
       conversation_states,
       outbound_delivery_attempts, whatsapp_recipient_addresses,
     data_control_requests, exercise_muscle_classifications,

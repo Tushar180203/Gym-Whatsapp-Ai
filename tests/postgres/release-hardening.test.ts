@@ -24,7 +24,7 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
     const adapter = new WhatsAppInboundAdapter("fixture-secret"); return app.processInbound(adapter.normalize(raw, adapter.sign(raw))[0]!, options);
   }
   it("fresh migrations and reruns preserve data and ordered migration ledger entries", async () => {
-    await app.migrate(); expect((await app.pool.query("select name from schema_migrations order by name")).rows.map(row => row.name)).toEqual(["0001_vertical_slice.sql","0002_us4.sql","0003_us5.sql","0004_us6.sql","0005_us7.sql","0006_release_integrity.sql","0007_core_configuration.sql","0008_whatsapp_transport.sql","0009_whatsapp_ownership.sql","0010_conversation.sql"]);
+    await app.migrate(); expect((await app.pool.query("select name from schema_migrations order by name")).rows.map(row => row.name)).toEqual(["0001_vertical_slice.sql","0002_us4.sql","0003_us5.sql","0004_us6.sql","0005_us7.sql","0006_release_integrity.sql","0007_core_configuration.sql","0008_whatsapp_transport.sql","0009_whatsapp_ownership.sql","0010_conversation.sql","0011_conversation_memory.sql","0012_workout_reminders.sql"]);
     expect(await app.currentUser(owner.sessionToken)).toBe(owner.userId);
   });
   it("database rejects foreign owner/parent relationships even without application checks", async () => {

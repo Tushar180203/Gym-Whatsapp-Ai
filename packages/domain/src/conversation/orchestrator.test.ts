@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConversationOrchestrator, type ConversationPorts } from "./orchestrator.js";
+import { ConversationOrchestrator, REPS_LIST, type ConversationPorts } from "./orchestrator.js";
 import { ConversationStateSchema, emptyConversation, type ConversationContext } from "./state.js";
 import type { ProposedAction } from "../../../contracts/src/ai/actions.js";
 
@@ -242,4 +242,12 @@ it("semantic partial answers cannot invent numeric values from prior context", a
   const h = harness(); await h.send("10 reps");
   h.interpret.mockResolvedValueOnce(envelope({ type: "ANSWER_PENDING_QUESTION", answer: "99" }));
   await h.send("you know what I mean"); expect(h.log).not.toHaveBeenCalled(); expect(h.state().stack.at(-1)?.kind).toBe("LOAD");
+});
+
+it("rep-count replies match in linear time (CodeQL ReDoS regression)", () => {
+  for (const reply of ["10", "10 10 9", "10, 10, 9 reps", "10 , reps", "10 10,"]) expect(REPS_LIST.test(reply)).toBe(true);
+  for (const reply of ["10reps", "reps", "10 x 9", " 10", "10 10 9 rep"]) expect(REPS_LIST.test(reply)).toBe(false);
+  const started = performance.now();
+  expect(REPS_LIST.test("9".repeat(50_000) + "x")).toBe(false);
+  expect(performance.now() - started).toBeLessThan(250);
 });
