@@ -55,7 +55,7 @@ export class GeminiStructuredOutputClient implements StructuredOutputClient {
         throw new AiProviderError("AI provider request timed out", "AI_PROVIDER_TIMEOUT", true);
       }
       if (!response.ok) {
-        throw new AiProviderError(`AI provider returned HTTP ${response.status}`, "AI_PROVIDER_HTTP_ERROR", response.status >= 500);
+        throw new AiProviderError(`AI provider returned HTTP ${response.status}`, "AI_PROVIDER_HTTP_ERROR", response.status >= 500, response.status);
       }
       let raw: unknown;
       try { raw = await response.json(); }
@@ -94,11 +94,12 @@ export class GeminiStructuredOutputClient implements StructuredOutputClient {
   }
 }
 
+// Live diagnostics show bounded array constraints cause HTTP 400 for the expanded contract.
 // Gemini supports a schema subset; all omitted constraints remain enforced by Zod.
 export function geminiJsonSchema(value: unknown): unknown {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const schema = value as Record<string, unknown>;
-  const supported = new Set(["type", "format", "title", "description", "enum", "required", "minimum", "maximum", "minItems", "maxItems", "$ref"]);
+  const supported = new Set(["type", "format", "title", "description", "enum", "required", "minimum", "maximum", "$ref"]);
   const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(schema)) {
     if (key === "properties" || key === "$defs") {

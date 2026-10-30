@@ -41,3 +41,10 @@ describe("bounded factual history answers", () => {
       { type: "QUERY_HISTORY", queryKind: "LAST_SESSION", subject: { kind: "ROUTINE_SESSION", sessionRef: "push" } })).toContain("No recorded history");
   });
 });
+
+it("filters a dated performance question by the user's local day", () => {
+  const local = { ...snapshot, timeZone: "Asia/Kolkata", workouts: snapshot.workouts.map(workout => ({ ...workout, trainedAt: new Date("2026-10-05T19:00:00Z") })) };
+  const action = { type: "QUERY_HISTORY" as const, queryKind: "LAST_SESSION" as const, subject: { kind: "ROUTINE_SESSION" as const, sessionRef: "Push Day" } };
+  expect(answerHistoryQuestion(local, { ...action, onDate: "2026-10-05" })).toBe("No recorded history for that session.");
+  expect(answerHistoryQuestion(local, { ...action, onDate: "2026-10-06" })).toContain("2026-10-06");
+});

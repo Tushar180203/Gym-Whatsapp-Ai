@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation.js";
 import { Download, RefreshCw, Trash2, X } from "lucide-react";
 import type { DataRequest } from "../../../../packages/persistence/src/data-controls.js";
 type Review = { categories: { category: string; count: number }[]; requests: DataRequest[] };
-const categoryNames: Record<string, string> = { account: "Account", profile: "Profile / preferences", links: "WhatsApp links", routines: "Routines", cursors: "Routine sequence", templates: "Session templates", plannedExercises: "Planned exercises", exercises: "Exercise identities", aliases: "Aliases", classifications: "Muscle classifications", workouts: "Workout sessions", sessionExercises: "Session exercises", sets: "Workout sets", corrections: "Corrections" };
+const categoryNames: Record<string, string> = { account: "Account", conversationMemory: "Recent chat memory", profile: "Profile / preferences", links: "WhatsApp links", routines: "Routines", cursors: "Routine sequence", templates: "Session templates", plannedExercises: "Planned exercises", exercises: "Exercise identities", aliases: "Aliases", classifications: "Muscle classifications", workouts: "Workout sessions", sessionExercises: "Session exercises", sets: "Workout sets", corrections: "Corrections" };
 const typeNames: Record<string, string> = { EXPORT: "Export", DELETE_ACCOUNT: "Account deletion", DELETE_WORKOUT_DATA: "Workout-data deletion" };
 export function DataControlsView({ initialReview }: { initialReview: Review }) {
   const router = useRouter();

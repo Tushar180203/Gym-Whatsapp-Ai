@@ -1,3 +1,4 @@
+import { formatWhatsAppMessage } from "../../domain/src/messaging/response-layout.js";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { NormalizedWhatsAppMessage } from "../../contracts/src/index.js";
@@ -92,7 +93,7 @@ export async function queuePlanReady(db: PoolClient, userId: string, onlyLinkId?
     and ($2::text is null or l.id=$2) and ($3::text is null or a.provider_account_id=$3)
     and exists(select 1 from workout_session_templates t join planned_exercises p on p.session_template_id=t.id and p.removed_at is null where t.routine_id=r.id and t.archived_at is null)`, [userId, onlyLinkId ?? null, accountId ?? null])).rows;
   for (const row of rows) {
-    const body = `Your workout plan ${row.name} is ready. Send start when you want to train.`;
+    const body = formatWhatsAppMessage(`Your workout plan ${row.name} is ready. Send start when you want to train.`);
     await db.query(`insert into outbound_messages(id,user_id,provider_account_id,provider_user_identity_hash,body_hash,body,status,notification_key,notification_link_id,owner_generation)
       values($1,$2,$3,$4,$5,$6,'PENDING',$7,$8,(select data_control_generation from users where id=$2)) on conflict(notification_key) do nothing`,
     [randomUUID(), userId, row.provider_account_id, row.provider_user_identity_hash, hashChallenge(body), body, `plan-ready:${row.link_id}:${row.routine_id}:${row.version}`, row.link_id]);

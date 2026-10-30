@@ -1,10 +1,10 @@
 import { productionApp } from "../../../../server/app.js";
 
-import { z } from "zod";
-import { apiResponse, sessionCookie } from "../../../../server/http.js";
+import { signupRequestSchema } from "../../../../../../packages/contracts/src/api/requests.js";
+import { readJsonBody, apiResponse, sessionCookie } from "../../../../server/http.js";
 export async function POST(request: Request) {
   const response = await apiResponse(request, async () => {
-    const input = z.object({ email: z.email(), password: z.string().min(12) }).strict().parse(await request.json());
+    const input = signupRequestSchema.parse(await readJsonBody(request));
     return productionApp().signUp(input.email, input.password);
   });
   if (!response.ok) return response;

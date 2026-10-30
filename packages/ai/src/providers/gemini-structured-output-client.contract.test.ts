@@ -44,9 +44,10 @@ describe("GeminiStructuredOutputClient", () => {
         expect(body.generationConfig.responseFormat).toBeUndefined();
         expect(body.generationConfig.responseMimeType).toBe("application/json");
         expect(body.generationConfig.responseSchema.properties.schemaVersion.enum).toEqual(["workout-action.v1"]);
-        expect(body.generationConfig.responseSchema.properties.action.anyOf.length).toBe(18);
+        expect(body.generationConfig.responseSchema.properties.action.anyOf.map((action: any) => action.properties.type.enum[0])).toEqual(expect.arrayContaining(["LOG_SET", "QUERY_PLAN", "ANSWER_PENDING_QUESTION", "DRAFT_SETS"]));
         expect(JSON.stringify(body.generationConfig.responseSchema)).not.toContain('"const"');
         expect(JSON.stringify(body.generationConfig.responseSchema)).not.toContain('"additionalProperties"');
+        expect(JSON.stringify(body.generationConfig.responseSchema)).not.toContain('"maxItems"');
         return new Response(JSON.stringify(providerBody()));
       }
     });

@@ -66,7 +66,7 @@ pgDescribe("release PostgreSQL integrity and isolation", () => {
   });
   it("persists safe provider recovery, reuses it on replay, and retries only on a fresh turn", async () => {
     interpret.mockRejectedValueOnce(new AiProviderError("Unavailable", "AI_PROVIDER_ERROR", true));
-    const recovery = await send("retry", "interpret this unusual request"); expect(recovery.body).toContain("45x10");
+    const recovery = await send("retry", "interpret this unusual request"); expect(recovery.body).toContain("45kg 8");
     expect((await app.pool.query("select processing_status from inbound_messages where provider_message_id='retry'")).rows).toEqual([{ processing_status: "COMPLETED" }]);
     expect((await app.pool.query("select id from command_executions where user_id=$1", [owner.userId])).rows).toHaveLength(0);
     expect((await send("retry", "interpret this unusual request")).body).toBe(recovery.body); expect(interpret).toHaveBeenCalledOnce();

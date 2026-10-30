@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RateLimitService } from "../../../packages/domain/src/rate-limit/rate-limit-service.js";
 import { safeEvent } from "../../../packages/domain/src/observability/events.js";
 import { runtimeEnv } from "../../../packages/contracts/src/env.js";
-import { apiResponse, boundedWebhookBody } from "../../../apps/web/server/http.js";
+import { apiResponse, boundedWebhookBody, failureCode } from "../../../apps/web/server/http.js";
 import { WhatsAppInboundAdapter } from "../../../packages/messaging/src/index.js";
 import { parseSetMessage } from "../../../packages/domain/src/parser/set-parser.js";
 
@@ -46,9 +46,39 @@ describe("release privacy/security boundaries", () => {
     const blocked = await apiResponse(new Request("http://localhost/api/profile", { method: "PATCH", headers: { origin: "https://other.example" } }), handler);
     expect(blocked.status).toBe(403); expect(handler).toHaveBeenCalledTimes(1);
   });
+  it("logs only a SQLSTATE code for unexpected database failures, never the message", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      const missingColumn = Object.assign(new Error('column "workout_reminders_enabled" does not exist for user@example.com'), { code: "42703" });
+      const response = await apiResponse(new Request("http://localhost/api/profile"), async () => { throw missingColumn; });
+      expect(response.status).toBe(500); expect(await response.text()).not.toContain("workout_reminders_enabled");
+      const logged = log.mock.calls.map(call => String(call[0])).join("\n");
+      expect(logged).toContain('"code":"DB_42703"'); expect(logged).not.toContain("example.com"); expect(logged).not.toContain("does not exist");
+      expect(failureCode(new Error("plain"))).toBe("REQUEST_FAILED");
+      expect(failureCode(Object.assign(new Error("x"), { code: "ECONNREFUSED" }))).toBe("REQUEST_FAILED");
+    } finally { log.mockRestore(); }
+  });
   it("requires authenticity before payload parsing and rejects malformed signed payloads", () => {
     const adapter = new WhatsAppInboundAdapter("fixture-secret");
     expect(() => adapter.normalize("invalid-json", "bad")).toThrow(/signature/);
     expect(() => adapter.normalize("{}", adapter.sign("{}"))).toThrow();
+  });
+  it("allows same-origin development signup alongside a tunnel but keeps production strict", async () => {
+    vi.stubEnv("APP_ORIGIN", "https://workout.example");
+    vi.stubEnv("NODE_ENV", "development");
+    const handler = vi.fn(async () => ({ ok: true }));
+    const request = (origin: string) => new Request("http://localhost:3000/api/auth/signup", {
+      method: "POST", headers: { host: "localhost:3000", origin }
+    });
+    try {
+      expect((await apiResponse(request("http://localhost:3000"), handler)).status).toBe(200);
+      expect((await apiResponse(request("https://workout.example"), handler)).status).toBe(200);
+      expect((await apiResponse(request("https://other.example"), handler)).status).toBe(403);
+      expect((await apiResponse(request("http://localhost:3001"), handler)).status).toBe(403);
+      vi.stubEnv("NODE_ENV", "production");
+      expect((await apiResponse(request("http://localhost:3000"), handler)).status).toBe(403);
+      expect((await apiResponse(request("https://workout.example"), handler)).status).toBe(200);
+      expect(handler).toHaveBeenCalledTimes(3);
+    } finally { vi.unstubAllEnvs(); }
   });
 });

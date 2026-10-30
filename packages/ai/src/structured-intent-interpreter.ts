@@ -12,7 +12,14 @@ export class StructuredIntentInterpreter implements IntentInterpreter {
     private readonly prompts: PromptRegistry
   ) {}
 
+  get promptVersion(): string {
+    return this.prompts.getPrompt("intent-interpreter", workoutActionSchemaVersion).promptVersion;
+  }
+
   async interpret(request: IntentInterpretRequest): Promise<ProposedActionEnvelope> {
+    // Explicit allowlist: callers may contain owner IDs or additional runtime fields.
+    const { clock, recentConversation, locale, activeWorkout, activeExercise, activeExerciseContext, completedSetsForActiveExercise, preferredWeightUnit, previousSet, knownExerciseRefs, confirmedAliases, conversationMode, pendingAction, pendingOperation, pendingQuestion, pendingProposal, workoutContext, partialSetDraft, recentReferencedExercise, recentReferencedSet, activeLoadSemantics, allowedActionTypes } = request.context;
+    const safeContext = { clock, recentConversation: recentConversation?.slice(-24).map(({ role, content, occurredAt }) => ({ role, content: content.slice(0, 1000), occurredAt })), locale, activeWorkout, activeExercise, activeExerciseContext, completedSetsForActiveExercise, preferredWeightUnit, previousSet, knownExerciseRefs, confirmedAliases, conversationMode, pendingAction, pendingOperation, pendingQuestion, pendingProposal, workoutContext, partialSetDraft, recentReferencedExercise, recentReferencedSet, activeLoadSemantics, allowedActionTypes };
     const prompt = this.prompts.getPrompt("intent-interpreter", workoutActionSchemaVersion);
     const response = await this.client.createStructuredOutput({
       model: prompt.model,
@@ -21,7 +28,7 @@ export class StructuredIntentInterpreter implements IntentInterpreter {
       systemPrompt: prompt.systemPrompt,
       userText: JSON.stringify({
         userText: request.userInput,
-        context: request.context
+        context: safeContext
       }),
       responseSchema: prompt.responseSchema
     });

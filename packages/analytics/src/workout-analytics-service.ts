@@ -1,7 +1,8 @@
+import { localDate, localWeek } from "../../domain/src/time/local-calendar.js";
 import type { PerformanceSet } from "./previous-performance-service.js";
 export type AnalyticsWorkout = { id: string; userId: string; templateId: string; name: string; status: string; trainedAt: Date };
 export type MuscleClassification = { userId: string; exerciseIdentityId: string; muscleGroup: string; role: string; status: string };
-export type AnalyticsInput = { userId: string; now: Date; workouts: AnalyticsWorkout[]; sets: PerformanceSet[]; classifications: MuscleClassification[] };
+export type AnalyticsInput = { userId: string; now: Date; timeZone?: string; workouts: AnalyticsWorkout[]; sets: PerformanceSet[]; classifications: MuscleClassification[] };
 export const normalizedRef = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
 export function utcWeek(date: Date): string {
   const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -15,9 +16,10 @@ export function validAnalyticsSets(input: AnalyticsInput): PerformanceSet[] {
 export function workoutAnalytics(input: AnalyticsInput) {
   const validWorkouts = input.workouts.filter(workout => workout.userId === input.userId && ["COMPLETED", "INCOMPLETE"].includes(workout.status) && workout.trainedAt <= input.now);
   const completed = validWorkouts.filter(workout => workout.status === "COMPLETED");
-  const month = input.now.toISOString().slice(0, 7), week = utcWeek(input.now);
+  const calendar = input.timeZone ?? "UTC";
+  const month = localDate(input.now, calendar).slice(0, 7), week = localWeek(input.now, calendar);
   const frequency = new Map<string, number>();
-  for (const workout of completed) frequency.set(utcWeek(workout.trainedAt), (frequency.get(utcWeek(workout.trainedAt)) ?? 0) + 1);
+  for (const workout of completed) frequency.set(localWeek(workout.trainedAt, calendar), (frequency.get(localWeek(workout.trainedAt, calendar)) ?? 0) + 1);
   const sets = validAnalyticsSets(input);
   const dates = new Map(validWorkouts.map(workout => [workout.id, workout.trainedAt.toISOString()]));
   const muscles = new Map<string, { muscleGroup: string; ids: Set<string>; lastTrained: string | null }>();
@@ -27,7 +29,7 @@ export function workoutAnalytics(input: AnalyticsInput) {
     for (const set of sets.filter(row => row.exerciseIdentityId === classification.exerciseIdentityId)) {
       const date = dates.get(set.workoutId)!;
       if (!muscle.lastTrained || date > muscle.lastTrained) muscle.lastTrained = date;
-      if (utcWeek(new Date(date)) === week) muscle.ids.add(set.id);
+      if (localWeek(new Date(date), calendar) === week) muscle.ids.add(set.id);
     }
     muscles.set(key, muscle);
   }
@@ -36,8 +38,10 @@ export function workoutAnalytics(input: AnalyticsInput) {
     .sort((a, b) => a.date.localeCompare(b.date) || a.setIndex - b.setIndex || a.id.localeCompare(b.id));
   const lastTrained = new Map<string, string>();
   for (const set of progression) if (set.date > (lastTrained.get(set.exerciseIdentityId) ?? "")) lastTrained.set(set.exerciseIdentityId, set.date);
-  return { calendar: "UTC" as const, weekStarting: week, month, completedWorkoutCount: completed.length,
-    monthlyWorkoutCount: completed.filter(workout => workout.trainedAt.toISOString().slice(0, 7) === month).length,
+  return { calendar, asOf: input.now.toISOString(), weekStarting: week, month,
+    workouts: validWorkouts.map(({ id, name, status, trainedAt }) => ({ id, name, status, date: trainedAt.toISOString() })),
+    completedWorkoutCount: completed.length,
+    monthlyWorkoutCount: completed.filter(workout => localDate(workout.trainedAt, calendar).slice(0, 7) === month).length,
     frequency: [...frequency].map(([week, count]) => ({ week, count })).sort((a, b) => a.week.localeCompare(b.week)),
     muscles: [...muscles.values()].map(row => ({ muscleGroup: row.muscleGroup, weeklySets: row.ids.size, lastTrained: row.lastTrained })).sort((a, b) => a.muscleGroup.localeCompare(b.muscleGroup)),
     lastTrainedExercises: [...lastTrained].map(([exerciseIdentityId, date]) => ({ exerciseIdentityId, date })), progression };

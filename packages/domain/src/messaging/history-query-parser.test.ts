@@ -9,8 +9,9 @@ describe("bounded deterministic question routing", () => {
     ["When did I last train legs?", "QUERY_ANALYTICS", "LAST_TRAINED"],
     ["How many workouts did I do this month?", "QUERY_ANALYTICS", "MONTHLY_WORKOUT_COUNT"]
   ])("recognizes %s without AI", (text, type, queryKind) => expect(parseHistoryQuestion(text)).toMatchObject({ type, queryKind }));
-  it.each(["What should I bench today?", "Should I increase the weight?", "Should I deload?", "Am I training chest enough?"])("bounds coaching: %s", text => {
+  it.each(["What weight should I use today?", "Should I increase the weight?", "Should I deload?"])("bounds coaching: %s", text => {
     expect(isCoachingQuestion(text)).toBe(true); expect(parseHistoryQuestion(text)).toBeUndefined();
   });
+  it.each(["What should I bench today?", "Am I training chest enough?", "What should I do today according to my routine?"])("leaves ambiguous meaning to semantic interpretation: %s", text => expect(isCoachingQuestion(text)).toBe(false));
   it("leaves unrecognized wording to the locally validated AI fallback", () => expect(parseHistoryQuestion("tell me the chest volume facts for the current week")).toBeUndefined());
 });

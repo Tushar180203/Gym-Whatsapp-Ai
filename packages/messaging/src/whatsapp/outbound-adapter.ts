@@ -1,3 +1,4 @@
+import { messageTemplateSchema } from "../../../contracts/src/messaging/template.js";
 import { z } from "zod";
 import { TransportError, type MessagingTransport, type RecipientResolver, type SendInput } from "../transport.js";
 
@@ -22,15 +23,22 @@ export class WhatsAppOutboundAdapter implements MessagingTransport {
   async sendMessage(input: SendInput) {
     const recipient = await this.config.resolver.resolve(input.recipientIdentityId);
     if (!/^\d{5,20}$/.test(recipient.address)) throw new TransportError("INVALID_RECIPIENT", "RECIPIENT_INVALID");
+    const parsedTemplate = input.template ? messageTemplateSchema.safeParse(input.template) : null;
+    if (parsedTemplate && !parsedTemplate.success) throw new TransportError("CONFIGURATION", "MESSAGE_TEMPLATE_INVALID");
+    const template = parsedTemplate?.success ? parsedTemplate.data : undefined;
     const age = Date.now() - recipient.lastInboundAt.getTime();
-    if (!Number.isFinite(age) || age < -60_000 || age >= 24 * 60 * 60 * 1000) throw new TransportError("PERMANENT", "SERVICE_WINDOW_CLOSED");
+    if (!template && (!Number.isFinite(age) || age < -60_000 || age >= 24 * 60 * 60 * 1000)) throw new TransportError("PERMANENT", "SERVICE_WINDOW_CLOSED");
     if (!input.body || input.body.length > 4096) throw new TransportError("PERMANENT", "MESSAGE_LENGTH_INVALID");
     let response: Response;
     try {
       response = await (this.config.fetch ?? fetch)(`${this.config.testOrigin ?? "https://graph.facebook.com"}/${this.config.apiVersion}/${this.config.phoneNumberId}/messages`, {
         method: "POST", redirect: "error", signal: AbortSignal.timeout(this.config.timeoutMs ?? 10_000),
         headers: { "authorization": `Bearer ${this.config.accessToken}`, "content-type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: recipient.address, type: "text", text: { preview_url: false, body: input.body }, biz_opaque_callback_data: input.idempotencyKey })
+        body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: recipient.address,
+          ...(template ? { type: "template", template: { name: template.name, language: { code: template.languageCode },
+            ...(template.bodyParameters.length ? { components: [{ type: "body", parameters: template.bodyParameters.map(text => ({ type: "text", text })) }] } : {}) } }
+            : { type: "text", text: { preview_url: false, body: input.body } }),
+          biz_opaque_callback_data: input.idempotencyKey })
       });
     } catch { throw new TransportError("UNKNOWN", "PROVIDER_CONNECTION_OR_TIMEOUT"); }
     if (!response.ok) throw providerFailure(response.status);

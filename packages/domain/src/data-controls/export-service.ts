@@ -1,6 +1,7 @@
 export const portableFields = {
   account: ["id", "email", "created_at"],
-  profile: ["preferred_weight_unit", "display_name"],
+  profile: ["preferred_weight_unit", "display_name", "time_zone", "conversation_memory_enabled", "workout_reminders_enabled"],
+  conversationMemory: ["role", "content", "occurred_at", "expires_at"],
   links: ["id", "provider", "provider_account_id", "linked_at", "revoked_at"],
   routines: ["id", "name", "version", "created_at"],
   cursors: ["routine_id", "next_session_template_id", "cursor_sequence_index"],

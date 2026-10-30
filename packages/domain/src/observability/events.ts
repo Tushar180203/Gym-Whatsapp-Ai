@@ -11,10 +11,12 @@ export type SafeEvent = {
   pendingActionType?: string;
   resolvedIntent?: string;
   aiInvoked?: boolean;
+  aiPromptVersion?: string;
   aiActionType?: string;
   clarificationReason?: string;
   confirmationRequired?: boolean;
   executionResult?: string;
+  deterministicMatch?: string; schemaValidated?: boolean; targetResolutionResult?: string; finalAction?: string; responseCategory?: string;
 };
 export function safeEvent(input: SafeEvent): SafeEvent {
   return {
@@ -25,11 +27,13 @@ export function safeEvent(input: SafeEvent): SafeEvent {
     ...(input.outboundId && /^outbound_[a-f0-9]{24}$/.test(input.outboundId) ? { outboundId: input.outboundId } : {}),
     ...(input.recipientIdentityId && /^wpi_[a-f0-9]{24}$/.test(input.recipientIdentityId) ? { recipientIdentityId: input.recipientIdentityId } : {}),
     ...(input.status && ["SENDING", "SENT", "FAILED_RETRYABLE", "FAILED_FINAL"].includes(input.status) ? { status: input.status } : {}),
-    ...Object.fromEntries(["conversationMode", "routeStage", "pendingActionType", "resolvedIntent", "aiActionType", "clarificationReason", "executionResult"].flatMap(key => {
+    ...Object.fromEntries(["conversationMode", "routeStage", "pendingActionType", "resolvedIntent", "aiActionType", "clarificationReason", "executionResult", "deterministicMatch", "targetResolutionResult", "finalAction", "responseCategory"].flatMap(key => {
       const value = input[key as keyof SafeEvent];
-      return typeof value === "string" && /^[A-Z][A-Z_]{0,60}$/.test(value) ? [[key, value]] : [];
+      return typeof value === "string" && /^[A-Za-z][A-Za-z_]{0,60}$/.test(value) ? [[key, value]] : [];
     })),
+    ...(typeof input.schemaValidated === "boolean" ? { schemaValidated: input.schemaValidated } : {}),
     ...(typeof input.aiInvoked === "boolean" ? { aiInvoked: input.aiInvoked } : {}),
+    ...(typeof input.aiPromptVersion === "string" && /^intent-interpreter\.prompt\.v\d+$/.test(input.aiPromptVersion) ? { aiPromptVersion: input.aiPromptVersion } : {}),
     ...(typeof input.confirmationRequired === "boolean" ? { confirmationRequired: input.confirmationRequired } : {})
   };
 }

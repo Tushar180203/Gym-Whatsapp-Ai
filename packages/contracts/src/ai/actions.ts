@@ -38,9 +38,18 @@ export type QuerySubject =
   | { kind: "ROUTINE_SESSION"; sessionRef: string }
   | { kind: "ROUTINE"; routineRef: string };
 
+export type ConversationSemanticAction =
+  | { type: "GREETING" | "HELP" | "REPEAT" | "CANCEL_PENDING_OPERATION" | "CONTINUE" | "QUERY_PLAN" | "QUERY_CURRENT_STATE" | "COACHING_BOUNDARY" }
+  | { type: "ANSWER_PENDING_QUESTION"; answer: string }
+  | { type: "PREPARE_SET"; exerciseRef?: string }
+  | { type: "DRAFT_SETS"; loadValue: number; weightUnit?: WeightUnit; count: number };
+
 export type ProposedAction =
+  | ConversationSemanticAction
   | { type: "START_WORKOUT"; routineRef?: string; sessionRef?: string }
   | { type: "RESUME_WORKOUT"; workoutRef?: string }
+  | { type: "NEXT_EXERCISE" | "PREVIOUS_EXERCISE" }
+  | { type: "REORDER_EXERCISE"; exerciseRef: string; ordinal: number }
   | { type: "LOG_SET"; set: SetLogInput }
   | { type: "LOG_MULTIPLE_SETS"; sets: SetLogInput[] }
   | { type: "CORRECT_SET"; targetRef?: string; replacement: Partial<SetInput> }
@@ -54,12 +63,13 @@ export type ProposedAction =
   | { type: "CHANGE_SESSION"; sessionRef: string; scope: ChangeScope }
   | { type: "UPDATE_ROUTINE_REQUEST"; requestedChange: RoutineChange; scope: "PERMANENT_ROUTINE" | "AMBIGUOUS" }
   | { type: "FINISH_WORKOUT"; requestedCompletion?: "COMPLETE" | "INCOMPLETE" | "DISCARD" | "CONTINUE" }
-  | { type: "QUERY_HISTORY"; queryKind: "LAST_SESSION" | "LAST_EXERCISE" | "BEST_SET"; subject?: QuerySubject }
+  | { type: "QUERY_HISTORY"; queryKind: "LAST_SESSION" | "LAST_EXERCISE" | "BEST_SET"; subject?: QuerySubject; onDate?: string }
   | {
       type: "QUERY_ANALYTICS";
       queryKind: "WEEKLY_PRIMARY_MUSCLE_SETS" | "LAST_TRAINED" | "MONTHLY_WORKOUT_COUNT";
       subject?: QuerySubject;
     }
+  | { type: "QUERY_CONVERSATION"; onDate?: string; period?: "MORNING" | "AFTERNOON" | "EVENING"; search?: string }
   | { type: "UNKNOWN"; reason: string };
 
 export type ProposedActionEnvelope = {
@@ -68,6 +78,8 @@ export type ProposedActionEnvelope = {
   confidence: AiConfidence;
   requiresClarification: boolean;
   clarificationQuestion?: string;
+  requestKind?: "USER_DOMAIN_INTENT" | "META_INSTRUCTION" | "POLICY_BYPASS_ATTEMPT";
+  requiresConfirmation?: boolean;
   rationaleCodes: string[];
   forbiddenDirectMutation: true;
 };
@@ -115,10 +127,24 @@ const QuerySubjectSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const ProposedActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("GREETING") }).strict(),
+  z.object({ type: z.literal("HELP") }).strict(),
+  z.object({ type: z.literal("PREPARE_SET"), exerciseRef: ref.optional() }).strict(),
+  z.object({ type: z.literal("REPEAT") }).strict(),
+  z.object({ type: z.literal("CANCEL_PENDING_OPERATION") }).strict(),
+  z.object({ type: z.literal("CONTINUE") }).strict(),
+  z.object({ type: z.literal("QUERY_PLAN") }).strict(),
+  z.object({ type: z.literal("QUERY_CURRENT_STATE") }).strict(),
+  z.object({ type: z.literal("COACHING_BOUNDARY") }).strict(),
+  z.object({ type: z.literal("ANSWER_PENDING_QUESTION"), answer: z.string().min(1).max(120) }).strict(),
+  z.object({ type: z.literal("DRAFT_SETS"), loadValue: z.number().finite().nonnegative(), weightUnit: z.enum(["KG", "LB"]).optional(), count: z.number().int().min(1).max(20) }).strict(),
   z.object({ type: z.literal("START_WORKOUT"), routineRef: ref.optional(), sessionRef: ref.optional() }).strict(),
   z.object({ type: z.literal("RESUME_WORKOUT"), workoutRef: ref.optional() }).strict(),
+  z.object({ type: z.literal("NEXT_EXERCISE") }).strict(),
+  z.object({ type: z.literal("PREVIOUS_EXERCISE") }).strict(),
+  z.object({ type: z.literal("REORDER_EXERCISE"), exerciseRef: ref, ordinal: z.number().int().min(1).max(50) }).strict(),
   z.object({ type: z.literal("LOG_SET"), set: SetLogInputSchema }).strict(),
-  z.object({ type: z.literal("LOG_MULTIPLE_SETS"), sets: z.array(SetLogInputSchema).min(1) }).strict(),
+  z.object({ type: z.literal("LOG_MULTIPLE_SETS"), sets: z.array(SetLogInputSchema).min(1).max(20) }).strict(),
   z.object({ type: z.literal("CORRECT_SET"), targetRef: ref.optional(), replacement: SetInputSchema }).strict(),
   z.object({ type: z.literal("DELETE_SET"), targetRef: ref.optional() }).strict(),
   z.object({ type: z.literal("CHANGE_ACTIVE_EXERCISE"), exerciseRef: ref }).strict(),
@@ -130,8 +156,9 @@ export const ProposedActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("CHANGE_SESSION"), sessionRef: ref, scope }).strict(),
   z.object({ type: z.literal("UPDATE_ROUTINE_REQUEST"), requestedChange: RoutineChangeSchema, scope: z.enum(["PERMANENT_ROUTINE", "AMBIGUOUS"]) }).strict(),
   z.object({ type: z.literal("FINISH_WORKOUT"), requestedCompletion: z.enum(["COMPLETE", "INCOMPLETE", "DISCARD", "CONTINUE"]).optional() }).strict(),
-  z.object({ type: z.literal("QUERY_HISTORY"), queryKind: z.enum(["LAST_SESSION", "LAST_EXERCISE", "BEST_SET"]), subject: QuerySubjectSchema.optional() }).strict(),
+  z.object({ type: z.literal("QUERY_HISTORY"), queryKind: z.enum(["LAST_SESSION", "LAST_EXERCISE", "BEST_SET"]), subject: QuerySubjectSchema.optional(), onDate: z.iso.date().optional() }).strict(),
   z.object({ type: z.literal("QUERY_ANALYTICS"), queryKind: z.enum(["WEEKLY_PRIMARY_MUSCLE_SETS", "LAST_TRAINED", "MONTHLY_WORKOUT_COUNT"]), subject: QuerySubjectSchema.optional() }).strict(),
+  z.object({ type: z.literal("QUERY_CONVERSATION"), onDate: z.iso.date().optional(), period: z.enum(["MORNING", "AFTERNOON", "EVENING"]).optional(), search: z.string().trim().max(120).optional() }).strict(),
   z.object({ type: z.literal("UNKNOWN"), reason: ref }).strict()
 ]);
 
@@ -142,6 +169,8 @@ export const ProposedActionEnvelopeSchema = z
     confidence: z.enum(["low", "medium", "high"]),
     requiresClarification: z.boolean(),
     clarificationQuestion: z.string().optional(),
+    requestKind: z.enum(["USER_DOMAIN_INTENT", "META_INSTRUCTION", "POLICY_BYPASS_ATTEMPT"]).optional(),
+    requiresConfirmation: z.boolean().optional(),
     rationaleCodes: z.array(z.string()),
     forbiddenDirectMutation: z.literal(true)
   })
@@ -178,6 +207,8 @@ export function parseProposedActionEnvelope(value: unknown): ProposedActionEnvel
     confidence: envelope.data.confidence as AiConfidence,
     requiresClarification: envelope.data.requiresClarification,
     ...(envelope.data.clarificationQuestion ? { clarificationQuestion: envelope.data.clarificationQuestion } : {}),
+    ...(envelope.data.requestKind ? { requestKind: envelope.data.requestKind } : {}),
+    ...(envelope.data.requiresConfirmation !== undefined ? { requiresConfirmation: envelope.data.requiresConfirmation } : {}),
     rationaleCodes: envelope.data.rationaleCodes,
     forbiddenDirectMutation: true
   };
@@ -185,6 +216,7 @@ export function parseProposedActionEnvelope(value: unknown): ProposedActionEnvel
 
 export function evaluateConfirmationPolicy(envelope: ProposedActionEnvelope): ConfirmationPolicyDecision {
   const reasonCodes = new Set<string>();
+  if (envelope.requestKind === "META_INSTRUCTION" || envelope.requestKind === "POLICY_BYPASS_ATTEMPT") reasonCodes.add("CLARIFICATION_REQUIRED");
   if (envelope.requiresClarification || envelope.confidence === "low") reasonCodes.add("CLARIFICATION_REQUIRED");
 
   const action = envelope.action;

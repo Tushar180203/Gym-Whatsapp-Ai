@@ -1,42 +1,52 @@
+import { messageTemplateSchema } from "../../contracts/src/messaging/template.js";
+import { localClock, localDate, validTimeZone } from "../../domain/src/time/local-calendar.js";
 import type { Pool } from "pg";
 import type { NormalizedWhatsAppMessage } from "../../contracts/src/index.js";
 import type { SafeEvent } from "../../domain/src/observability/events.js";
 import { TransportError, type MessagingTransport } from "./transport.js";
 
 export class PostgresDelivery {
-  constructor(private readonly pool: Pool, private readonly transport: MessagingTransport, private readonly observe?: (event: SafeEvent) => void) {}
+  constructor(private readonly pool: Pool, private readonly transport: MessagingTransport, private readonly observe?: (event: SafeEvent) => void, private readonly now: () => Date = () => new Date()) {}
 
   async forInbound(message: NormalizedWhatsAppMessage): Promise<string> {
     const row = (await this.pool.query(`select o.id from outbound_messages o join inbound_messages m on m.id=o.inbound_message_id
       where m.provider=$1 and m.provider_account_id=$2 and m.provider_message_id=$3 and m.provider_user_identity_hash=$4`,
     [message.provider, message.providerAccountId, message.providerMessageId, message.providerUserIdentityHash])).rows[0];
-    return row ? this.deliver(row.id) : "NO_RESPONSE";
+    return row ? this.deliver(row.id, true) : "NO_RESPONSE";
   }
 
   async notificationsForUser(userId: string): Promise<void> {
     const rows = (await this.pool.query("select id from outbound_messages where user_id=$1 and notification_key is not null and status in ('PENDING','FAILED_RETRYABLE') order by created_at,id limit 20", [userId])).rows;
-    for (const row of rows) await this.deliver(row.id);
+    for (const row of rows) await this.deliver(row.id, true);
   }
 
-  async deliver(logicalId: string): Promise<string> {
+  async deliver(logicalId: string, waitForOwner = false): Promise<string> {
     const client = await this.pool.connect();
     let lockedUser: string | undefined;
     let released = false;
     try {
-      const owner = (await client.query("select user_id from outbound_messages where id=$1", [logicalId])).rows[0];
+      const owner = (await client.query("select user_id,notification_key from outbound_messages where id=$1", [logicalId])).rows[0];
       if (!owner) return "NOT_FOUND";
-      const lock = (await client.query("select pg_try_advisory_lock(hashtext($1)) as locked", [owner.user_id])).rows[0];
-      if (!lock.locked) return "BUSY";
+      // A webhook must wait for concurrent commands/deliveries instead of
+      // acknowledging a response that remains unsent with no retry scheduled.
+      if (waitForOwner) await client.query("select pg_advisory_lock(hashtext($1))", [owner.user_id]);
+      else {
+        const lock = (await client.query("select pg_try_advisory_lock(hashtext($1)) as locked", [owner.user_id])).rows[0];
+        if (!lock.locked) return "BUSY";
+      }
       lockedUser = owner.user_id;
       // The owner lock also excludes account/workout deletion while this short, bounded send runs.
       const row = (await client.query(`select o.*,u.deleted_at,u.data_control_generation as current_generation,
-          coalesce(m.data_control_generation,o.owner_generation) as data_control_generation,i.id as identity_id from outbound_messages o
+          coalesce(m.data_control_generation,o.owner_generation) as data_control_generation,i.id as identity_id,l.opt_in_at as messaging_opt_in_at from outbound_messages o
         join users u on u.id=o.user_id left join inbound_messages m on m.id=o.inbound_message_id
         left join whatsapp_provider_accounts a on a.provider='WHATSAPP_CLOUD_API' and a.provider_account_id=o.provider_account_id
         left join whatsapp_provider_user_identities i on i.whatsapp_provider_account_id=a.id and i.provider_user_identity_hash=o.provider_user_identity_hash
         left join whatsapp_identity_links l on l.whatsapp_provider_user_identity_id=i.id and l.user_id=o.user_id and l.revoked_at is null and l.status='VERIFIED'
         where o.id=$1 and l.id is not null and (o.notification_link_id is null or o.notification_link_id=l.id)`, [logicalId])).rows[0];
-      if (!row || row.deleted_at || row.current_generation !== row.data_control_generation) return "BLOCKED";
+      if (!row || row.deleted_at || row.current_generation !== row.data_control_generation) {
+        if (owner.notification_key?.startsWith("workout-reminder:")) await client.query("update outbound_messages set status='FAILED_FINAL',safe_to_retry=false,error_category='REMINDER_UNAVAILABLE' where id=$1 and status in ('PENDING','FAILED_RETRYABLE') and provider_outbound_message_id is null", [logicalId]);
+        return "BLOCKED";
+      }
       if (row.status === "SENT" || row.provider_outbound_message_id) return "SENT";
       if (row.notification_key?.startsWith("plan-ready:") && !(await client.query("select id from outbound_messages where user_id=$1 and notification_key=$2 and status='SENT' and provider_outbound_message_id is not null", [owner.user_id, `welcome:${row.notification_link_id}`])).rows.length) return "WAITING_FOR_WELCOME";
       if (row.status === "SENDING") {
@@ -46,6 +56,23 @@ export class PostgresDelivery {
           await client.query(`update outbound_delivery_attempts set outcome='UNKNOWN',completed_at=now(),error_category='ATTEMPT_INTERRUPTED' where outbound_message_id=$1 and outcome='SENDING'`, [logicalId]);
         }
         return "DELIVERY_UNKNOWN";
+      }
+      if (row.notification_key?.startsWith("workout-reminder:")) {
+        const profile = (await client.query("select workout_reminders_enabled,time_zone from user_profiles where user_id=$1", [owner.user_id])).rows[0];
+        const expired = !row.notification_expires_at || new Date(row.notification_expires_at).getTime() <= this.now().getTime();
+        const clock = profile && validTimeZone(profile.time_zone) ? localClock(this.now(), profile.time_zone) : null;
+        const active = (await client.query("select id from workout_sessions where user_id=$1 and status in ('PROPOSED','ACTIVE','PAUSED') and data_deleted_at is null limit 1", [owner.user_id])).rows.length > 0;
+        const recorded = (await client.query(`select coalesce(completed_at,started_at,created_at) as date from workout_sessions w
+          where w.user_id=$1 and w.status in ('COMPLETED','INCOMPLETE') and w.data_deleted_at is null
+          and coalesce(completed_at,started_at,created_at) <= $2 and coalesce(completed_at,started_at,created_at) > $2::timestamptz-interval '2 days'
+          and exists(select 1 from workout_sets s where s.workout_session_id=w.id and s.user_id=$1 and s.status='RECORDED')`, [owner.user_id, this.now()])).rows;
+        const trained = clock && recorded.some(workout => localDate(new Date(workout.date), profile.time_zone) === clock.localDate);
+        const wrongMorning = !clock || !row.notification_key.endsWith(`:${clock.localDate}`) || clock.localTime < "05:00" || clock.localTime >= "05:15";
+        if (!profile?.workout_reminders_enabled || !row.messaging_opt_in_at || expired || active || trained || wrongMorning) {
+          const reason = expired || wrongMorning ? "REMINDER_EXPIRED" : active || trained ? "REMINDER_WORKOUT_ACTIVE" : "REMINDER_DISABLED";
+          await client.query("update outbound_messages set status='FAILED_FINAL',safe_to_retry=false,error_category=$2 where id=$1", [logicalId, reason]);
+          return "BLOCKED";
+        }
       }
       if (!row.safe_to_retry || row.attempt_count >= 3 || (row.next_attempt_at && new Date(row.next_attempt_at).getTime() > Date.now())) return "NOT_RETRYABLE";
       const attempt = row.attempt_count + 1;
@@ -57,7 +84,7 @@ export class PostgresDelivery {
       await client.query("commit");
       this.observe?.({ event: "outbound_delivery", outboundId: logicalId, recipientIdentityId: row.identity_id, status: "SENDING" });
       try {
-        const result = await this.transport.sendMessage({ recipientIdentityId: row.identity_id, body: row.body, idempotencyKey: logicalId });
+        const result = await this.transport.sendMessage({ recipientIdentityId: row.identity_id, body: row.body, idempotencyKey: logicalId, ...(row.message_template ? { template: messageTemplateSchema.parse(row.message_template) } : {}) });
         await client.query("begin");
         await client.query(`update outbound_messages set status='SENT',provider_outbound_message_id=$2,sent_at=coalesce(sent_at,now()),safe_to_retry=false,
           reconciliation_state='PROVIDER_ACCEPTED',error_category=CASE WHEN delivery_status='failed' THEN 'PROVIDER_DELIVERY_FAILED' ELSE null END

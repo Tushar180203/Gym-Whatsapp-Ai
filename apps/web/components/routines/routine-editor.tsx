@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from "lucide-react";
+import { ExercisePicker } from "./exercise-picker.js";
 import type { ConfiguredExercise, ConfiguredRoutine } from "../../../../packages/persistence/src/configuration.js";
 
 export async function setupRequest<T>(path: string, method = "GET", body?: unknown): Promise<T> {
@@ -21,7 +22,9 @@ export function RoutineEditor({ initial, onSaved }: { initial?: ConfiguredRoutin
   useEffect(() => { setupRequest<ConfiguredExercise[]>("/api/exercises").then(setExercises).catch(error => setStatus(error.message)); }, []);
   const changeSession = (index: number, value: SessionDraft) => setSessions(previous => previous.map((session, i) => i === index ? value : session));
   async function save(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setStatus("");
+    event.preventDefault();
+    if (sessions.some(session => session.exercises.some(exercise => !exercise.exerciseIdentityId))) { setStatus("Choose an exercise from the suggestions for each row."); return; }
+    setBusy(true); setStatus("");
     try {
       const routine = await setupRequest<ConfiguredRoutine>(initial ? `/api/routines/${initial.id}` : "/api/routines", initial ? "PATCH" : "POST", {
         name, sessions: sessions.map(session => ({ ...(session.id ? { id: session.id } : {}), name: session.name, exercises: session.exercises })),
@@ -46,7 +49,7 @@ export function RoutineEditor({ initial, onSaved }: { initial?: ConfiguredRoutin
       <div className="data-actions"><button type="button" className="icon-button" title="Move session up" aria-label={`Move session ${index + 1} up`} disabled={index === 0} onClick={() => { const next = [...sessions]; [next[index - 1], next[index]] = [next[index]!, next[index - 1]!]; setSessions(next); }}><ArrowUp size={18} /></button>
       <button type="button" className="icon-button" title="Remove session" aria-label={`Remove session ${index + 1}`} disabled={sessions.length === 1} onClick={() => setSessions(previous => previous.filter((_, i) => i !== index))}><Trash2 size={18} /></button></div></div>
       {session.exercises.map((exercise, order) => <div className="planned-exercise" key={order}>
-        <label className="visible-label">Exercise<select required value={exercise.exerciseIdentityId} onChange={event => changeSession(index, { ...session, exercises: session.exercises.map((item, i) => i === order ? { ...item, exerciseIdentityId: event.target.value } : item) })}><option value="">Choose exercise</option>{exercises.map(item => <option key={item.id} value={item.id}>{item.displayName}</option>)}</select></label>
+        <ExercisePicker exercises={exercises} onSuggestNew={suggestion => { setCustomName(suggestion); setConfirmed(false); setStatus("Review and confirm the suggested exercise below, then select it in your session."); document.getElementById("custom-exercise")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} value={exercise.exerciseIdentityId} onChange={id => changeSession(index, { ...session, exercises: session.exercises.map((item, i) => i === order ? { ...item, exerciseIdentityId: id } : item) })} />
         {([['Sets', 'plannedSetCount'], ['Min reps', 'repTargetMin'], ['Max reps', 'repTargetMax']] as const).map(([label, field]) => <label className="visible-label" key={field}>{label}<input type="number" min={1} max={field === 'plannedSetCount' ? 100 : 1000} required value={exercise[field]} onChange={event => changeSession(index, { ...session, exercises: session.exercises.map((item, i) => i === order ? { ...item, [field]: Number(event.target.value) } : item) })} /></label>)}
         <div className="data-actions"><button type="button" className="icon-button" title="Move exercise up" aria-label={`Move exercise ${order + 1} up in session ${index + 1}`} disabled={order === 0} onClick={() => { const next = [...session.exercises]; [next[order - 1], next[order]] = [next[order]!, next[order - 1]!]; changeSession(index, { ...session, exercises: next }); }}><ArrowUp size={18} /></button>
         <button type="button" className="icon-button" title="Move exercise down" aria-label={`Move exercise ${order + 1} down in session ${index + 1}`} disabled={order === session.exercises.length - 1} onClick={() => { const next = [...session.exercises]; [next[order + 1], next[order]] = [next[order]!, next[order + 1]!]; changeSession(index, { ...session, exercises: next }); }}><ArrowDown size={18} /></button>
@@ -56,7 +59,7 @@ export function RoutineEditor({ initial, onSaved }: { initial?: ConfiguredRoutin
     </fieldset>)}
     {initial && <label className="confirmation-check"><input type="checkbox" checked={sequenceConfirmed} onChange={event => setSequenceConfirmed(event.target.checked)} />Confirm permanent session sequence changes</label>}
     <div className="data-actions"><button type="button" className="command-button" onClick={() => setSessions(previous => [...previous, { name: "", exercises: [] }])}><Plus size={18} />Add session</button><button className="command-button" disabled={busy}><Save size={18} />Save routine</button></div>
-  </form><section className="data-band"><h2>Custom exercise</h2><div className="setup-grid"><label className="visible-label">Custom exercise name<input value={customName} onChange={event => setCustomName(event.target.value)} /></label>
+  </form><section id="custom-exercise" className="data-band"><h2>Custom exercise</h2><div className="setup-grid"><label className="visible-label">Custom exercise name<input value={customName} onChange={event => setCustomName(event.target.value)} /></label>
     <label className="visible-label">Load semantics<select value={semantics} onChange={event => setSemantics(event.target.value)}><option value="UNSPECIFIED_DEFAULT">Unspecified/default</option><option value="PER_HAND_PER_SIDE">Per hand / side</option><option value="TOTAL_LOAD">Total load</option><option value="MACHINE_STACK">Machine stack</option></select></label></div>
     <label className="confirmation-check"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />Confirm new exercise identity and load semantics</label>
     <button type="button" className="command-button" disabled={busy || !confirmed || !customName.trim()} onClick={createCustom}><Plus size={18} />Create custom exercise</button></section><p role="status" aria-live="polite">{status}</p></>;

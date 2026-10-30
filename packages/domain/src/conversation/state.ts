@@ -3,6 +3,8 @@ import { ProposedActionSchema, SetInputSchema } from "../../../contracts/src/ai/
 
 const scope = z.enum(["SESSION_ONLY", "PERMANENT_ROUTINE", "AMBIGUOUS"]);
 const frame = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("ALIAS"), alias: z.string().min(1).max(120), exerciseRef: z.string().nullable(), slot: z.enum(["TARGET", "NAME"]) }).strict(),
+  z.object({ kind: z.literal("SET_DRAFT"), load: z.number().finite().nonnegative(), unit: z.enum(["KG", "LB"]).optional(), count: z.number().int().min(1).max(20), exerciseId: z.string() }).strict(),
   z.object({ kind: z.literal("REPLACE"), source: z.string().nullable(), replacement: z.string().nullable(), scope, slot: z.enum(["SOURCE", "REPLACEMENT", "SCOPE"]) }).strict(),
   z.object({ kind: z.literal("CUSTOM"), name: z.string().max(120), confirmationId: z.string() }).strict(),
   z.object({ kind: z.literal("TARGET"), action: ProposedActionSchema, candidates: z.array(z.string()).max(50) }).strict(),
@@ -36,9 +38,12 @@ export type PendingFrame = ConversationState["stack"][number];
 export function emptyConversation(): ConversationState {
   return { schemaVersion: "conversation.v1", mode: "IDLE", version: 0, workoutId: null, workoutVersion: null, expiresAt: null, stack: [], recentExerciseId: null, recentSetId: null, lastQuestion: null, lastEventAt: null, recentChange: null };
 }
-export type ConversationExercise = { id: string; identityId: string; name: string; aliases: string[]; order: number; status: string; plannedSets?: number | null; repsMin?: number | null; repsMax?: number | null; recordedSets?: number };
+export type ConversationExercise = { id: string; identityId: string; name: string; aliases: string[]; order: number; status: string; plannedSets?: number | null; repsMin?: number | null; repsMax?: number | null; recordedSets?: number; loadSemantics?: string };
 export type ConversationSet = { id: string; exerciseId: string; index: number; load: number; unit: "KG" | "LB"; semantics: string; reps: number };
 export type ConversationContext = {
+  timeZone?: string;
+  recentConversation?: import("./memory.js").ConversationTurn[];
+  preferredWeightUnit?: "KG" | "LB";
   workout: { id: string; version: number; status: string; name: string; activeExerciseId: string | null; finishPending: boolean; templateId?: string } | null;
   exercises: ConversationExercise[];
   identities: Array<{ id: string; name: string; aliases: string[] }>;

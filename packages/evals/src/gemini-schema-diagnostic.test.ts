@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { proposedActionJsonSchema } from "../../ai/src/prompt-registry.js";
+import { readFileSync } from "node:fs";
+import { runMetadata, writeResultArtifact } from "./result-artifacts.js";
+import { intentPromptVersion, defaultIntentModel, proposedActionJsonSchema } from "../../ai/src/prompt-registry.js";
 import { geminiJsonSchema } from "../../ai/src/providers/gemini-structured-output-client.js";
 
 export function schemaSummary(schema: unknown) {
@@ -42,8 +43,7 @@ describe("Gemini schema diagnostics", () => {
   it("captures the current provider schema without credentials or conversation data", () => {
     if (process.env.CAPTURE_GEMINI_SCHEMA !== "1") return;
     const schema = geminiJsonSchema(proposedActionJsonSchema);
-    mkdirSync("packages/evals/diagnostics", { recursive: true });
-    writeFileSync("packages/evals/diagnostics/gemini-current-schema.json", JSON.stringify(schema, null, 2) + "\n");
+    writeResultArtifact("specs/001-whatsapp-workout-companion/evaluation-runs", runMetadata({ promptVersion: intentPromptVersion, model: defaultIntentModel, corpusVersion: "schema-diagnostic.v2", resultType: "OFFLINE_SYNTHETIC" }), schema);
     console.log(JSON.stringify({ generationConfigField: "responseSchema", summary: schemaSummary(schema) }));
     expect(schema).toBeDefined();
   });
@@ -112,8 +112,7 @@ describe("Gemini schema diagnostics", () => {
         ...minimal.properties, clarificationQuestion: { anyOf: [{ type: "STRING" }, { type: "null" }] }
       } });
     } finally {
-      mkdirSync("packages/evals/diagnostics", { recursive: true });
-      writeFileSync(`packages/evals/diagnostics/gemini-schema-${process.env.GEMINI_SCHEMA_REDUCED_ONLY === "1" ? "reduced" : "diagnostic"}-results.json`, JSON.stringify(report, null, 2) + "\n");
+      writeResultArtifact("specs/001-whatsapp-workout-companion/evaluation-runs", runMetadata({ promptVersion: intentPromptVersion, model, corpusVersion: "schema-diagnostic.v2", resultType: "LIVE_GEMINI" }), report);
     }
   }, 240000);
 });

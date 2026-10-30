@@ -12,6 +12,8 @@ const schema = z.object({
   WHATSAPP_RECIPIENT_ENCRYPTION_KEY: z.string().optional(),
   WHATSAPP_GRAPH_API_VERSION: z.string().optional(),
   WHATSAPP_BUSINESS_NUMBER: z.string().optional(),
+  WHATSAPP_REMINDER_TEMPLATE_NAME: z.string().regex(/^[a-z][a-z0-9_]{0,511}$/).optional(),
+  WHATSAPP_REMINDER_TEMPLATE_LANGUAGE: z.string().regex(/^[a-z]{2,3}(?:_[A-Z]{2})?$/).default("en"),
   APP_ORIGIN: z.url().optional()
 });
 export function runtimeEnv(env: NodeJS.ProcessEnv = process.env) {

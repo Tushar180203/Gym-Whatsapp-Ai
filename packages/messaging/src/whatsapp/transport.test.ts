@@ -54,3 +54,23 @@ describe("WhatsApp provider boundary", () => {
     await expect(adapter.sendMessage(input)).rejects.toMatchObject({ category: "UNKNOWN", safeToRetry: false });
   });
 });
+
+describe("approved reminder templates", () => {
+  const resolver = { resolve: async () => ({ address: "15555550123", lastInboundAt: new Date(0) }) };
+  it("sends the persisted approved envelope outside the reply window without reopening it", async () => {
+    const send = vi.fn().mockResolvedValue(Response.json({ messages: [{ id: "wamid.template" }] }));
+    const adapter = new WhatsAppOutboundAdapter({ accessToken: "fixture", phoneNumberId: "123", apiVersion: "v25.0", resolver, fetch: send });
+    const input = { recipientIdentityId: "identity", body: "Reminder text", idempotencyKey: "reminder-1", template: { name: "workout_reminder_5am", languageCode: "en", bodyParameters: ["Push: Bench day"] } };
+    await expect(adapter.sendMessage(input)).resolves.toEqual({ providerMessageId: "wamid.template" });
+    expect(JSON.parse(send.mock.calls[0]![1].body)).toMatchObject({ type: "template", template: { name: "workout_reminder_5am", language: { code: "en" }, components: [{ type: "body", parameters: [{ type: "text", text: "Push: Bench day" }] }] }, biz_opaque_callback_data: "reminder-1" });
+    expect(JSON.parse(send.mock.calls[0]![1].body).text).toBeUndefined();
+    await expect(adapter.sendMessage({ recipientIdentityId: "identity", body: "A free-form message", idempotencyKey: "free-form" })).rejects.toMatchObject({ code: "SERVICE_WINDOW_CLOSED" });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+  it("rejects malformed or multiline template parameters before calling the provider", async () => {
+    const send = vi.fn();
+    const adapter = new WhatsAppOutboundAdapter({ accessToken: "fixture", phoneNumberId: "123", apiVersion: "v25.0", resolver, fetch: send });
+    await expect(adapter.sendMessage({ recipientIdentityId: "identity", body: "Reminder", idempotencyKey: "invalid", template: { name: "wrong/name", languageCode: "en", bodyParameters: ["a\nb"] } })).rejects.toMatchObject({ code: "MESSAGE_TEMPLATE_INVALID" });
+    expect(send).not.toHaveBeenCalled();
+  });
+});

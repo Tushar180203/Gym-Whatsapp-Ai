@@ -18,11 +18,11 @@ export class AnalyticsQueries {
     const identities = await this.db.query("select id,display_name as name,default_load_semantics as \"defaultLoadSemantics\" from exercise_identities where (owner_user_id=$1 or owner_user_id is null) and merged_into_id is null", [this.userId]);
     const aliases = await this.db.query("select a.exercise_identity_id as \"identityId\",a.alias_text as alias from exercise_aliases a join exercise_identities e on e.id=a.exercise_identity_id where a.user_id=$1 and a.status='CONFIRMED' and (e.owner_user_id=$1 or e.owner_user_id is null) and e.merged_into_id is null", [this.userId]);
     const classifications = await this.db.query("select user_id as \"userId\",exercise_identity_id as \"exerciseIdentityId\",muscle_group as \"muscleGroup\",role,status from exercise_muscle_classifications where user_id=$1", [this.userId]);
-    const profile = (await this.db.query("select preferred_weight_unit from user_profiles where user_id=$1", [this.userId])).rows[0];
+    const profile = (await this.db.query("select preferred_weight_unit,time_zone from user_profiles where user_id=$1", [this.userId])).rows[0];
     if (!profile) throw new DomainError("Profile required", "PROFILE_REQUIRED");
     const sets = await new WorkoutHistoryQueries(this.db).sets(this.userId);
     const names = await this.db.query("select s.id,se.exercise_name_snapshot from workout_sets s join session_exercises se on se.id=s.session_exercise_id where s.user_id=$1 and s.status='RECORDED'", [this.userId]);
-    return { userId: this.userId, now, preferredWeightUnit: profile.preferred_weight_unit, workouts: workouts.rows, identities: identities.rows, aliases: aliases.rows, classifications: classifications.rows, sets,
+    return { userId: this.userId, now, timeZone: profile.time_zone, preferredWeightUnit: profile.preferred_weight_unit, workouts: workouts.rows, identities: identities.rows, aliases: aliases.rows, classifications: classifications.rows, sets,
       setNames: Object.fromEntries(names.rows.filter(row => row.exercise_name_snapshot).map(row => [row.id, row.exercise_name_snapshot])) };
   }
   async classify(exerciseId: string, value: unknown): Promise<void> {

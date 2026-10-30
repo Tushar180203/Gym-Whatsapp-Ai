@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import { AppShell } from "../components/navigation/app-shell.js";
 import "./styles.css";
-export const metadata = { title: "Workout Companion" };
+export const metadata = { title: "Workout Companion", description: "Plan your workouts, log them on WhatsApp, and see your progress." };
 export default function Layout({ children }: { children: ReactNode }) {
-  return <html lang="en"><body><header className="brand"><span className="brand-mark">W</span><span>Workout Companion</span><nav aria-label="Product"><a href="/routines">Routines</a><a href="/history">History</a><a href="/analytics">Analytics</a><a href="/settings/data">Stored data</a></nav></header><main>{children}</main></body></html>;
+  return <html lang="en"><body><AppShell>{children}</AppShell></body></html>;
 }

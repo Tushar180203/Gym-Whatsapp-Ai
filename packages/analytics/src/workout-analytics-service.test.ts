@@ -32,3 +32,12 @@ describe("deterministic workout analytics", () => {
     expect(result.progression).toHaveLength(2);
   });
 });
+
+it("uses the saved timezone at month and week boundaries", () => {
+  const time = new Date("2026-11-01T19:00:00Z");
+  const result = workoutAnalytics({ userId: "user", now: time, timeZone: "Asia/Kolkata", workouts: [{ id: "w", userId: "user", templateId: "t", name: "Push", status: "COMPLETED", trainedAt: time }], sets: [], classifications: [] });
+  expect(result.calendar).toBe("Asia/Kolkata");
+  expect(result.weekStarting).toBe("2026-11-02");
+  expect(result.month).toBe("2026-11");
+  expect(result.monthlyWorkoutCount).toBe(1);
+});

@@ -56,17 +56,21 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     propose({ type: "CORRECT_SET", targetRef: "incline", replacement: { reps: 9 } });
     expect((await send("incline was 9")).body).toContain("Which");
     expect((await query("select count(*)::int as n from corrections where type='CORRECT_SET'"))[0].n).toBe(1);
+    propose({ type: "CHANGE_ACTIVE_EXERCISE", exerciseRef: "Incline Dumbbell Press" });
     await send("switch to Incline Dumbbell Press");
     expect((await query("select status from session_exercises order by order_index")).map(row => row.status)).toEqual(["IN_PROGRESS", "IN_PROGRESS"]);
   });
 
   it("session changes stay isolated; permanent confirmation changes only future templates once", async () => {
     const before = await query("select * from planned_exercises order by id");
-    await send("add Squat today"); await send("do Squat first"); await send("skip Squat today");
-    await send("switch to Incline Dumbbell Press"); await send("replace Incline Dumbbell Press with Squat today");
+    await send("add Squat today");
+    propose({ type: "REORDER_EXERCISE", exerciseRef: "Squat", ordinal: 1 }); await send("do Squat first");
+    propose({ type: "SKIP_EXERCISE", exerciseRef: "Squat", scope: "SESSION_ONLY" }); await send("skip Squat today");
+    propose({ type: "CHANGE_ACTIVE_EXERCISE", exerciseRef: "Incline Dumbbell Press" }); await send("switch to Incline Dumbbell Press");
+    await send("replace Incline Dumbbell Press with Squat today");
     expect(await query("select * from planned_exercises order by id")).toEqual(before);
     const sessionBefore = await query("select * from session_exercises order by id");
-    expect((await send("replace Squat with Incline Dumbbell Press")).body).toBe("Today only or update your routine?");
+    expect((await send("replace Squat with Incline Dumbbell Press")).body).toBe("*🤔 Quick question*\n\nToday only or update your routine?\n\n• Today only\n• Update your routine\n\nReply TODAY or PERMANENT.");
     propose({ type: "UPDATE_ROUTINE_REQUEST", scope: "PERMANENT_ROUTINE", requestedChange: { operation: "REPLACE_EXERCISE", sessionRef: "Upper", fromExerciseRef: "Incline Dumbbell Press", toExerciseRef: "Squat" } });
     expect((await send("from now on use squat in Upper instead of incline")).body).toContain("Reply yes");
     expect(await query("select * from planned_exercises order by id")).toEqual(before);
@@ -74,7 +78,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     expect(await query("select * from session_exercises order by id")).toEqual(sessionBefore);
     expect((await query("select count(*)::int as n from corrections where type='PERMANENT_EXERCISE'"))[0].n).toBe(1);
     expect((await query("select e.display_name from planned_exercises p join exercise_identities e on e.id=p.exercise_identity_id join workout_session_templates t on t.id=p.session_template_id where t.name='Upper'"))[0].display_name).toBe("Squat");
-    expect(mock.requests).toHaveLength(1);
+    expect(mock.requests).toHaveLength(4);
   });
 
   it("custom exercises require confirmation; confirmed aliases reuse; conflicts clarify", async () => {
@@ -90,7 +94,9 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     expect((await send("red press first set should be 11 reps")).body).toContain("applied");
     expect((await query("select reps from workout_sets where exercise_identity_id=$1", [custom]))[0].reps).toBe(11);
     propose({ type: "MAP_EXERCISE_ALIAS", alias: "red press", exerciseRef: "Squat" });
-    expect((await send("call Squat red press")).body).toContain("conflicts");
+    expect((await send("call Squat red press")).body).toContain("already belongs to another exercise");
+    expect((await query("select state from conversation_states"))[0].state.stack.at(-1)).toMatchObject({kind:"ALIAS",slot:"NAME",alias:"red press"});
+    expect((await query("select exercise_identity_id from exercise_aliases where alias_text='red press'"))[0].exercise_identity_id).toBe(custom);
     await send("add Smith Incline Press today"); await send("yes");
     expect(await query("select id from exercise_identities where display_name in ('Incline Dumbbell Press','Smith Incline Press')")).toHaveLength(2);
   });
@@ -110,7 +116,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
   });
 
   it("expiry/stale/conflict/no-pending and invented numeric values fail safely", async () => {
-    expect((await send("yes")).body).toBe("No pending confirmation.");
+    expect((await send("yes")).body).toBe("*💬 Next step*\n\nNo pending confirmation.");
     await send("45x10,45x9"); await send("delete incline set 1");
     expect((await send("add New press today")).body).toContain("Resolve the pending");
     await send("45x8"); expect((await send("yes")).body).toContain("target changed");
@@ -122,6 +128,7 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
   });
 
   it("unknown named set logging confirms identity once and preserves supplied values", async () => {
+    mock.enqueue({ schemaVersion: "workout-action.v1", action: { type: "LOG_SET", set: { exerciseRef: "Red press machine", loadValue: 45, weightUnit: "LB", reps: 10 } }, confidence: "high", requiresClarification: false, rationaleCodes: [], forbiddenDirectMutation: true });
     expect((await send("Red press machine 45 lb x 10")).body).toContain("Reply yes");
     expect(await query("select id from workout_sets")).toHaveLength(0);
     await send("confirm"); await send("confirm");
@@ -129,11 +136,11 @@ pgDescribe("US4 PostgreSQL application boundary", () => {
     await send("Red press machine 40 kg x 9");
     expect(await query("select id from exercise_identities where display_name='Red press machine'")).toHaveLength(1);
     expect(await query("select id from workout_sets")).toHaveLength(2);
-    expect(mock.requests).toHaveLength(0);
+    expect(mock.requests).toHaveLength(1);
   });
 
   it("scope replies are resolved deterministically before AI and still gate permanent changes", async () => {
-    expect((await send("replace incline with Squat")).body).toBe("Today only or update your routine?");
+    expect((await send("replace incline with Squat")).body).toBe("*🤔 Quick question*\n\nToday only or update your routine?\n\n• Today only\n• Update your routine\n\nReply TODAY or PERMANENT.");
     const routineBefore = await query("select * from planned_exercises order by id");
     expect((await send("today only")).body).toContain("applied");
     expect(await query("select * from planned_exercises order by id")).toEqual(routineBefore);

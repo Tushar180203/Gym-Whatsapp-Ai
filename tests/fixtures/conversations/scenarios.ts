@@ -1,4 +1,6 @@
+import type { ProposedAction } from "../../../packages/contracts/src/ai/actions.js";
 export type ConversationTurn = {
+  proposal?: ProposedAction;
   text?: string; restart?: boolean; id?: string;
   sets?: number; reps?: number[]; pending?: string | null; confirmation?: boolean;
   active?: string; status?: string; contains?: string; readOnly?: boolean;
@@ -16,7 +18,7 @@ export const conversationScenarios: ConversationScenario[] = [
   { name: "interrupted clarification", turns: [...start, { text: "replace bench with cable fly", pending: "REPLACE" }, { text: "show today's workout", readOnly: true, pending: "REPLACE" }, { text: "hi", readOnly: true, pending: "REPLACE" }, { text: "okay make that change for today", pending: null, active: "Cable Fly" }] },
   { name: "routine factual questions", turns: [{ text: "what should I do according to my plan", readOnly: true, contains: "Barbell Bench Press" }, ...start, { text: "how many sets do i have", readOnly: true }] },
   { name: "history questions", turns: [...start, { text: "what's my best bench", readOnly: true }, { text: "45x10", sets: 1 }, { text: "what was my last set", readOnly: true, contains: "10" }] },
-  { name: "typo-heavy user", turns: [...start, { text: "switch to cabel fly", active: "Cable Fly" }, { text: "20kgs x10", sets: 1 }] },
+  { name: "typo-heavy user", turns: [...start, { text: "switch to cabel fly", proposal: { type: "CHANGE_ACTIVE_EXERCISE", exerciseRef: "cabel fly" }, active: "Cable Fly" }, { text: "20kgs x10", sets: 1 }] },
   { name: "terse user", turns: [...start, { text: "10 reps", pending: "LOAD", sets: 0 }, { text: "45", pending: null, reps: [10] }, { text: "same 9", reps: [10, 9] }] },
   { name: "chatty user", turns: [...start, { text: "hello", readOnly: true }, { text: "thanks", readOnly: true }, { text: "are you there", readOnly: true }, { text: "45x10", sets: 1 }] },
   { name: "accidental duplicate messages", turns: [...start, { text: "45x10", id: "one-set", sets: 1 }, { text: "45x10", id: "one-set", sets: 1 }] },

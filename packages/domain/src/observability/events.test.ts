@@ -8,4 +8,8 @@ describe("conversation routing telemetry", () => {
   it("drops free-form values in route fields", () => {
     expect(safeEvent({ event: "conversation_route", routeStage: "user phone +15555550123", aiActionType: "raw provider credentials", clarificationReason: "private workout content" })).toEqual({ event: "conversation_route" });
   });
+  it("records a validated prompt version without exposing arbitrary text", () => {
+    expect(safeEvent({ event: "conversation_route", aiPromptVersion: "intent-interpreter.prompt.v11" })).toEqual({ event: "conversation_route", aiPromptVersion: "intent-interpreter.prompt.v11" });
+    expect(safeEvent({ event: "conversation_route", aiPromptVersion: "secret prompt contents" })).toEqual({ event: "conversation_route" });
+  });
 });

@@ -1,9 +1,13 @@
 import { z } from "zod";
+import { validTimeZone } from "../../../domain/src/time/local-calendar.js";
 
 const name = z.string().trim().min(1).max(120);
 export const profilePatchSchema = z.object({
   preferredWeightUnit: z.enum(["KG", "LB"]),
-  displayName: z.string().trim().max(120).nullable().optional()
+  displayName: z.string().trim().max(120).nullable().optional(),
+  timeZone: z.string().max(80).refine(validTimeZone, "Invalid timezone").optional(),
+  conversationMemoryEnabled: z.boolean().optional(),
+  workoutRemindersEnabled: z.boolean().optional()
 }).strict();
 export const plannedExerciseSchema = z.object({
   exerciseIdentityId: name,

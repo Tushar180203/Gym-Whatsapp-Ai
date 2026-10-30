@@ -1,4 +1,5 @@
-export type SendInput = { recipientIdentityId: string; body: string; idempotencyKey: string };
+import type { MessageTemplate } from "../../contracts/src/messaging/template.js";
+export type SendInput = { recipientIdentityId: string; body: string; idempotencyKey: string; template?: MessageTemplate };
 export type SendResult = { providerMessageId: string };
 export interface MessagingTransport { sendMessage(input: SendInput): Promise<SendResult> }
 export type FailureCategory = "RETRYABLE" | "PERMANENT" | "CONFIGURATION" | "INVALID_RECIPIENT" | "UNKNOWN";

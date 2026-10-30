@@ -1,9 +1,9 @@
 import { productionApp } from "../../../server/app.js";
-import { apiResponse, requestSession } from "../../../server/http.js";
+import { readJsonBody, apiResponse, requestSession } from "../../../server/http.js";
 
 export async function PATCH(request: Request) {
   return apiResponse(request, async () => {
-    const input = await request.json();
+    const input = await readJsonBody(request);
     return productionApp().configure(requestSession(request), configuration => configuration.profile(input));
   });
 }

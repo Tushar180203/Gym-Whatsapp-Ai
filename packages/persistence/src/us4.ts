@@ -143,7 +143,8 @@ export class Us4Commands {
         if (!("id" in target)) return { question: "Choose an existing exercise identity for this alias." };
         const existing = await this.identity(action.alias);
         if ("question" in existing || ("id" in existing && existing.id !== target.id)) return { question: "That alias conflicts with another exercise. Choose a different alias." };
-        return { kind: action.type, args: { identityId: target.id, alias: action.alias }, versions: await this.identityVersions([target.id]), confirm: true, summary: `Map ${action.alias} to ${action.exerciseRef}` };
+        const name=(await this.rows("select display_name from exercise_identities where id=$1",[target.id]))[0]?.display_name??action.exerciseRef;
+        return { kind: action.type, args: { identityId: target.id, alias: action.alias }, versions: await this.identityVersions([target.id]), confirm: true, summary: `Map ${action.alias} to ${name}` };
       }
       const from = await this.identity(action.fromExerciseRef), to = await this.identity(action.toExerciseRef);
       if (!("id" in from) || !("id" in to) || from.id === to.id) return { question: "Choose two distinct existing user-owned exercise identities." };
@@ -416,6 +417,12 @@ export class Us4Commands {
     if (a.workoutId) await this.db.query("update session_exercises se set exercise_name_snapshot=e.display_name from exercise_identities e where se.exercise_identity_id=e.id and se.workout_session_id=$1 and se.exercise_name_snapshot is null", [a.workoutId]);
     for (const key of Object.keys(plan.versions)) {
       const split = key.indexOf(":"), table = key.slice(0, split);
+      // Alias rows belong to one user. The identity is only a stale-target
+      // guard; adding an alias must not change a shared identity's version.
+      if(plan.kind==="MAP_EXERCISE_ALIAS"&&table==="exercise_identities"){
+        await this.db.query("update exercise_identities set version=version+1 where id=$1 and owner_user_id=$2",[key.slice(split+1),this.userId]);
+        continue;
+      }
       await this.db.query(`update ${table} set version=version+1 where id=$1`, [key.slice(split + 1)]);
     }
     const body = `${plan.summary} applied.`;

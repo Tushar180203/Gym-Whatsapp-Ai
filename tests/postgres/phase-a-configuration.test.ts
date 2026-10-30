@@ -23,6 +23,13 @@ pgDescribe("Phase A owner-scoped configuration", () => {
     expect((await app.pool.query("select count(*)::int as n from users")).rows[0].n).toBe(2);
     expect((await app.pool.query("select count(*)::int as n from auth_sessions")).rows[0].n).toBe(2);
   });
+  it("sign-in issues a new session for correct credentials and rejects wrong ones identically", async () => {
+    const session = await app.signIn("SETUP-OWNER@example.com", "correct horse battery staple");
+    expect(session.userId).toBe(owner.userId);
+    expect(await app.currentUser(session.sessionToken)).toBe(owner.userId);
+    await expect(app.signIn("setup-owner@example.com", "wrong password entirely")).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    await expect(app.signIn("nobody@example.com", "correct horse battery staple")).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+  });
   it("session persistence failure rolls back account creation", async () => {
     await app.pool.query("create function reject_signup_session() returns trigger language plpgsql as $$ begin raise exception 'test session failure'; end $$");
     await app.pool.query("create trigger signup_session_failure before insert on auth_sessions for each row execute function reject_signup_session()");
@@ -39,10 +46,13 @@ pgDescribe("Phase A owner-scoped configuration", () => {
     { name: "Legs", exercises: [{ exerciseIdentityId: "global_leg_extension", plannedSetCount: 2, repTargetMin: 10 }] }
   ] });
   it("round-trips profile preferences/name and rejects ignored/foreign fields", async () => {
-    expect(await app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "LB", displayName: "Sam" }))).toEqual({ preferredWeightUnit: "LB", displayName: "Sam" });
-    expect(await app.profile(owner.userId)).toEqual({ preferredWeightUnit: "LB", displayName: "Sam" });
+    expect(await app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "LB", displayName: "Sam" }))).toEqual({ preferredWeightUnit: "LB", displayName: "Sam", timeZone: "UTC", conversationMemoryEnabled: true, workoutRemindersEnabled: false });
+    expect(await app.profile(owner.userId)).toEqual({ preferredWeightUnit: "LB", displayName: "Sam", timeZone: "UTC", conversationMemoryEnabled: true, workoutRemindersEnabled: false });
     await app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "KG" }));
     expect((await app.profile(owner.userId)).displayName).toBe("Sam");
+    await app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "KG", timeZone: "Asia/Kolkata" }));
+    expect((await app.profile(owner.userId)).timeZone).toBe("Asia/Kolkata");
+    await expect(app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "KG", timeZone: "invalid/zone" }))).rejects.toThrow();
     await expect(app.configure(owner.sessionToken, c => c.profile({ preferredWeightUnit: "KG", userId: other.userId }))).rejects.toThrow();
   });
   it("saves multiple configurable routines and preserves schedule/cursor after restart", async () => {

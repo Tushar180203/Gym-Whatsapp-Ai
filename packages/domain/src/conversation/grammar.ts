@@ -8,14 +8,17 @@ export function normalizeMessage(text: string): string {
     .replace(/(\d)(kgs?|lbs?)(?=\s|x|for|\b)/gi, (_match, digit: string, unit: string) => `${digit} ${unit.toLowerCase().startsWith("kg") ? "kg" : "lb"} `)
     .replace(/\b(kgs|kilograms?|lbs|pounds?)(?=\s|x|for|\b)/gi, (unit: string) => unit.toLowerCase().startsWith("kg") || unit.toLowerCase().startsWith("kilo") ? "kg" : "lb")
     .replace(/(\d)reps\b/gi, "$1 reps")
-    .replace(/\s+/g, " ").replace(/[?!]+$/, "").replace(/\bsame\s+(\d+)\b/gi, "same x $1");
+    .replace(/\s+/g, " ").replace(/[?!]+$/, "").replace(/\bsame\s+(\d+)\b/gi, "same x $1").trim();
 }
 export type ConversationGrammar =
   | { kind: "ACTION"; action: Us4Action }
   | { kind: "REPLACE"; source: string | null; replacement: string | null; scope: ChangeScope }
   | { kind: "LOG" | "LOG_NEXT"; notation: string }
+  | { kind: "LOAD_ONLY"; load: number; unit: "KG" | "LB" }
   | { kind: "REPS"; reps: number }
   | { kind: "SAME" }
+  | { kind: "NAVIGATE"; exerciseRef: string }
+  | { kind: "EXTRA_SET"; exerciseRef: string | null }
   | { kind: "REPAIR_VALUE"; ordinal: number; value: number }
   | { kind: "REPAIR_PREVIOUS_VALUE"; previous: number; value: number }
   | { kind: "DEFER"; exerciseRef: string }
@@ -47,12 +50,23 @@ export function parseConversationGrammar(value: string): ConversationGrammar | u
   if (/^(?:what was my last set|last set)$/i.test(value)) return { kind: "FACT", query: "LAST_SET" };
   if (/^(?:ok(?:ay)? )?back to (?:the )?workout$/i.test(value)) return { kind: "FACT", query: "CURRENT" };
   if (/^how many sets (?:do i have|are left)$/i.test(value)) return { kind: "FACT", query: "SETS" };
-  if (/^(start(?: workout)?|let'?s (?:go|train)|gym time|begin|ready)$/i.test(value)) return { kind: "ACTION", action: { type: "START_WORKOUT" } };
-  const start = value.match(/^(?:let'?s )?start (.+)$/i);
-  if (start && !/^(?:planned(?: workout)?|routine .+)$/i.test(start[1]!)) return { kind: "ACTION", action: { type: "START_WORKOUT", sessionRef: start[1]! } };
+  if (/^(start(?: workout)?|let'?s (?:start|go|train)|gym time|begin|ready)$/i.test(value)) return { kind: "ACTION", action: { type: "START_WORKOUT" } };
+  const navigation = value.match(/^(?:(?:i (?:want|need|would like) to|can i|let me) )?(?:go back|return|go|move) to (.+?)(?: please)?$/i);
+  if (navigation) return { kind: "NAVIGATE", exerciseRef: navigation[1]! };
+  const extraSet = value.match(/^(?:(?:i (?:want|need|have) to|let me|can i) (?:do |log )?|(?:do|log) )?(?:another set|(?:one|an?|\d+) (?:more|extra) sets?|(?:one|an?|\d+) sets? more)(?: (?:for|of|on) (.+?))?(?: please)?$/i);
+  if (extraSet) return { kind: "EXTRA_SET", exerciseRef: extraSet[1] ?? null };
+  const start = value.match(/^(?:let'?s )?start(?: |, ?)(.+)$/i);
+  if (start && !/^(?:planned(?: workout)?|routine .+)$/i.test(start[1]!)) {
+    // Follow-up questions ("what's the plan") and time/filler words ("today", "my workout") are not session names; with nothing left, start the next planned session.
+    const sessionRef = start[1]!.split(/,|(?:^|\s+)(?:(?:and|then|so)\s+)?(?:what'?s|whats|what|how|show|tell|give)\b/i)[0]!.replace(/\b(?:for today|today'?s|today|right now|now|please|again|workout|session|training)\b/gi, " ")
+      .replace(/^\s*(?:(?:my|the|this)\s+)+/i, "").replace(/\s+/g, " ").trim();
+    return { kind: "ACTION", action: sessionRef ? { type: "START_WORKOUT", sessionRef } : { type: "START_WORKOUT" } };
+  }
   const compound = value.match(/^(.+?)\s+(?:and|then)\s+(?:next|move on|next exercise)$/i);
   if (compound && hasSetNotation(compound[1]!)) return { kind: "LOG_NEXT", notation: compound[1]! };
   if (hasSetNotation(value)) return { kind: "LOG", notation: value };
+  const load = value.match(/^(?:(?:(?:just )?(?:the )?(?:load|weight)(?: for now)?\s*(?::|is|was)?\s*)|(?:i (?:used|lifted) ))?(\d+(?:\.\d+)?)\s*(kg|lb)(?: but (?:i )?(?:have not|haven't) (?:told|given) you (?:the )?reps)?$/i);
+  if (load) return { kind: "LOAD_ONLY", load: Number(load[1]), unit: load[2]!.toUpperCase() as "KG" | "LB" };
   const reps = value.match(/^(\d+) reps$/i);
   if (reps) return { kind: "REPS", reps: Number(reps[1]) };
   if (/^same$/i.test(value)) return { kind: "SAME" };

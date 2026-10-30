@@ -1,3 +1,4 @@
+import { formatWhatsAppMessage } from "../../domain/src/messaging/response-layout.js";
 import { readFileSync } from "node:fs";
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
@@ -17,16 +18,17 @@ import { DataControls, exportRequestSchema, deleteRequestSchema, confirmDeletion
 import { workoutAnalytics } from "../../analytics/src/workout-analytics-service.js";
 import { answerHistoryQuestion, coachingBoundary, type HistoryAction, type HistorySnapshot } from "../../analytics/src/history-question-service.js";
 import { ProposedActionSchema } from "../../contracts/src/ai/actions.js";
-import { isCoachingQuestion, parseHistoryQuestion } from "../../domain/src/messaging/history-query-parser.js";
 import type { SafeEvent } from "../../domain/src/observability/events.js";
 import { Configuration } from "./configuration.js";
 import { WorkoutSelection } from "./workout-selection.js";
 import { parseStartIntent, type StartChoice } from "../../domain/src/workouts/start-intent.js";
+import { isCoachingQuestion, parseHistoryQuestion } from "../../domain/src/messaging/history-query-parser.js";
 import { z } from "zod";
 import { linkRequestSchema, parseLinkCommand } from "../../messaging/src/whatsapp/link-challenge.js";
 import { WhatsAppLinks, verifyWhatsAppChallenge, queuePlanReady, type VerifiedRecipientWriter } from "./whatsapp-links.js";
 import { ConversationOrchestrator } from "../../domain/src/conversation/orchestrator.js";
 import { PostgresConversation } from "./conversation.js";
+import { ConversationMemory } from "./conversation-memory.js";
 
 export type PostgresSliceConfig = {
   connectionString: string;
@@ -76,7 +78,7 @@ export class PostgresVerticalSliceApp {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(40104002)");
       await client.query("create table if not exists schema_migrations(name text primary key)");
-      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql", "0007_core_configuration.sql", "0008_whatsapp_transport.sql", "0009_whatsapp_ownership.sql", "0010_conversation.sql"]) {
+      for (const name of ["0001_vertical_slice.sql", "0002_us4.sql", "0003_us5.sql", "0004_us6.sql", "0005_us7.sql", "0006_release_integrity.sql", "0007_core_configuration.sql", "0008_whatsapp_transport.sql", "0009_whatsapp_ownership.sql", "0010_conversation.sql", "0011_conversation_memory.sql", "0012_workout_reminders.sql"]) {
         if ((await client.query("select name from schema_migrations where name=$1", [name])).rows.length) continue;
         const adopted = name === "0001_vertical_slice.sql" && (await client.query("select to_regclass('users') as name")).rows[0]?.name;
         if (!adopted) await client.query(readFileSync(`packages/persistence/migrations/${name}`, "utf8"));
@@ -113,6 +115,21 @@ export class PostgresVerticalSliceApp {
     } finally { client.release(); }
   }
 
+  async signIn(email: string, password: string): Promise<{ userId: string; sessionToken: string }> {
+    const row = (await this.pool.query<{ id: string; password_hash: string }>(
+      `select id, password_hash from users where email = $1 and deleted_at is null`, [email.trim().toLowerCase()]
+    )).rows[0];
+    // Hash against a throwaway value for unknown emails so response time does not reveal which accounts exist.
+    const valid = verifyPassword(password, row?.password_hash ?? hashPassword("unknown-account-placeholder"));
+    if (!row || !valid) throw new DomainError("Invalid credentials", "INVALID_CREDENTIALS");
+    const sessionToken = token();
+    await this.pool.query(
+      `insert into auth_sessions (id, user_id, token_hash, expires_at) values ($1, $2, $3, now() + interval '30 days')`,
+      [id("session"), row.id, sha256(sessionToken)]
+    );
+    return { userId: row.id, sessionToken };
+  }
+
   async currentUser(sessionToken: string): Promise<string> {
     const result = await this.pool.query<{ user_id: string }>(
       `select s.user_id
@@ -142,14 +159,14 @@ export class PostgresVerticalSliceApp {
     );
   }
 
-  async profile(userId: string): Promise<{ preferredWeightUnit: WeightUnit; displayName: string | null }> {
-    const result = await this.pool.query<{ preferred_weight_unit: WeightUnit; display_name: string | null }>(
-      `select preferred_weight_unit, display_name from user_profiles where user_id = $1`,
+  async profile(userId: string): Promise<{ preferredWeightUnit: WeightUnit; displayName: string | null; timeZone: string; conversationMemoryEnabled: boolean; workoutRemindersEnabled: boolean }> {
+    const result = await this.pool.query<{ preferred_weight_unit: WeightUnit; display_name: string | null; time_zone: string; conversation_memory_enabled: boolean; workout_reminders_enabled: boolean }>(
+      `select preferred_weight_unit, display_name, time_zone, conversation_memory_enabled, workout_reminders_enabled from user_profiles where user_id = $1`,
       [userId]
     );
     const row = result.rows[0];
     if (!row) throw new DomainError("Profile not found", "PROFILE_REQUIRED");
-    return { preferredWeightUnit: row.preferred_weight_unit, displayName: row.display_name };
+    return { preferredWeightUnit: row.preferred_weight_unit, displayName: row.display_name, timeZone: row.time_zone, conversationMemoryEnabled: row.conversation_memory_enabled, workoutRemindersEnabled: row.workout_reminders_enabled };
   }
 
   async configure<T>(sessionToken: string, handler: (configuration: Configuration) => Promise<T>): Promise<T> {
@@ -315,7 +332,7 @@ export class PostgresVerticalSliceApp {
         join whatsapp_provider_accounts a on a.id=i.whatsapp_provider_account_id
         where l.user_id=$2 and l.status='VERIFIED' and a.provider_account_id=$3 and i.provider_user_identity_hash=$4 limit 1) where id=$1`,
       [inbound.id, userId, message.providerAccountId, message.providerUserIdentityHash]);
-      const body = verification?.body ?? await this.applyMessage(client, userId, inbound.id, message.text, message.providerSentAt);
+      const body = formatWhatsAppMessage(verification?.body ?? await this.applyMessage(client, userId, inbound.id, message.text, message.providerSentAt));
       await client.query(`update inbound_messages set processing_status = 'COMPLETED', processed_at = now(), result_body=$2,data_control_generation=(select data_control_generation from users where id=$3) where id = $1`, [
         inbound.id, body, userId
       ]);
@@ -597,18 +614,23 @@ export class PostgresVerticalSliceApp {
 
   private async applyMessage(client: PoolClient, userId: string, inboundId: string, text: string, eventAt?: number): Promise<string> {
     const started = performance.now();
+    let ignoredOlder = false;
     const ports = new PostgresConversation(client, userId, inboundId,
       value => this.applyDeterministicMessage(client, userId, inboundId, value),
       value => this.logSets(client, userId, inboundId, `${inboundId}:log`, value), {
         ...(this.interpreter ? { interpreter: this.interpreter } : {}),
         beforeAi: () => this.config.checkAiLimit?.(userId),
         observe: trace => {
+          ignoredOlder = trace.executionResult === "IGNORED_OLDER";
           this.config.observe?.({ event: "conversation_route", ...trace });
           this.config.observe?.({ event: "message_latency", path: trace.aiInvoked ? "AI" : "DETERMINISTIC", durationMs: performance.now() - started });
           if (trace.executionResult === "AI_FAILED") this.config.observe?.({ event: "ai_failure", code: "AI_FAILED" });
         }
       });
-    return new ConversationOrchestrator(ports).process(text, eventAt);
+    const body = await new ConversationOrchestrator(ports).process(text, eventAt);
+    const eventTime = new Date(Math.min(eventAt ?? Date.now(), Date.now()));
+    if (!ignoredOlder) await new ConversationMemory(client, userId).remember(inboundId, text, body, eventTime);
+    return body;
   }
 
   private async applyDeterministicMessage(client: PoolClient, userId: string, inboundId: string, text: string): Promise<string | undefined> {
@@ -635,6 +657,10 @@ export class PostgresVerticalSliceApp {
     const question = parseHistoryQuestion(text);
     if (question) return answerHistoryQuestion(await new AnalyticsQueries(client, userId).snapshot(), question);
     const commandKey = `${inboundId}:log`;
+    // The deterministic logger is an intentional fast path only. Natural
+    // language must reach the contextual interpreter instead of being turned
+    // into a parser error here.
+    if (!hasSetNotation(text)) return undefined;
     const existing = await client.query(
       `select id from command_executions where user_id = $1 and idempotency_key = $2 and status = 'COMPLETED'`,
       [userId, commandKey]
@@ -760,7 +786,8 @@ export class PostgresVerticalSliceApp {
     await client.query(`update outbound_messages set notification_link_id=(select verified_link_id from inbound_messages where id=$3),
       owner_generation=(select data_control_generation from users where id=$2) where id=$1 and notification_link_id is null`,
     [persisted.rows[0]!.id, userId, inboundId]);
-    if (parseLinkCommand(message.text) && body === "WhatsApp connected successfully. You can now receive and log your workouts.") {
+    const welcomeBody = "WhatsApp connected successfully. You can now receive and log your workouts.";
+    if (parseLinkCommand(message.text) && (body === welcomeBody || body === formatWhatsAppMessage(welcomeBody))) {
       const link = (await client.query("select verified_link_id from inbound_messages where id=$1", [inboundId])).rows[0]?.verified_link_id;
       if (link) {
         await client.query("update outbound_messages set notification_key=$2 where id=$1", [persisted.rows[0]!.id, `welcome:${link}`]);

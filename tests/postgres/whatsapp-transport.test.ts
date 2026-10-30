@@ -139,6 +139,34 @@ pgDescribe("durable WhatsApp transport", () => {
     release(); await first;
     expect(sendMessage).toHaveBeenCalledTimes(1); expect((await row("commit")).status).toBe("SENT"); expect((await app.pool.query("select id from workout_sets")).rows).toHaveLength(1);
   });
+  it("waits for concurrent delivery instead of leaving a distinct reply pending", async () => {
+    await started();
+    const messages = [raw("queued-first", "45x10"), raw("queued-second", "45x9")].map(body => inbound.normalize(body, inbound.sign(body))[0]!);
+    for (const message of messages) await app.processInbound(message);
+    let release!: () => void, invoked!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const called = new Promise<void>(resolve => { invoked = resolve; });
+    const sendMessage = vi.fn(async ({ idempotencyKey }: { idempotencyKey: string }) => {
+      if (sendMessage.mock.calls.length === 1) { invoked(); await pending; }
+      return { providerMessageId: `fake-${idempotencyKey}` };
+    });
+    services.delivery = new PostgresDelivery(app.pool, { sendMessage });
+    const first = services.delivery.forInbound(messages[0]!); await called;
+    let settled = false;
+    const second = services.delivery.forInbound(messages[1]!).then(result => { settled = true; return result; });
+    try {
+      // Wait until PostgreSQL reports the second delivery blocked, or the old
+      // non-blocking implementation incorrectly completes with BUSY.
+      for (let n = 0; n < 100 && !settled; n++) {
+        const waiting = await app.pool.query("select count(*)::int as n from pg_stat_activity where datname=current_database() and wait_event='advisory'");
+        if (waiting.rows[0].n) break;
+      }
+      expect(settled).toBe(false);
+    } finally { release(); await first; await second; }
+    expect(await second).toBe("SENT"); expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect((await row("queued-first")).status).toBe("SENT"); expect((await row("queued-second")).status).toBe("SENT");
+    expect((await app.pool.query("select id from workout_sets")).rows).toHaveLength(2);
+  });
   it("permanent rejection and missing recipient preserve unsent records", async () => {
     await started(); fake.failure = new TransportError("PERMANENT", "PROVIDER_REJECTED", false, 400);
     await send("reject", "45x10"); expect(await row("reject")).toMatchObject({ status: "FAILED_FINAL", safe_to_retry: false, sent_at: null });
@@ -237,14 +265,14 @@ pgDescribe("durable WhatsApp transport", () => {
     const proof = await api("/api/whatsapp/link-token", "POST", { phoneNumber: `+${httpAddress}`, consent: true });
     const webhook = async (id: string, text: string) => { const body = raw(id, text, httpAddress); const result = await fetch(`${appOrigin}/api/webhooks/whatsapp`, { method: "POST", headers: { "x-hub-signature-256": inbound.sign(body) }, body }); expect(result.status).toBe(200); };
     await webhook("http-link", `LINK ${proof.token}`); await webhook("http-link", `LINK ${proof.token}`);
-    expect(received.filter(item => item.text.body.startsWith("WhatsApp connected successfully"))).toHaveLength(1);
-    expect(received.filter(item => item.text.body.startsWith("Your workout plan HTTP routine"))).toHaveLength(1);
+    expect(received.filter(item => item.text.body.startsWith("*🎉 WhatsApp connected*\n\nWhatsApp connected successfully"))).toHaveLength(1);
+    expect(received.filter(item => item.text.body.startsWith("*🗓️ Your plan is ready*\n\nYour workout plan HTTP routine"))).toHaveLength(1);
     expect(received.at(-1)!.to).toBe(httpAddress);
     await webhook("http-start", "start"); await webhook("http-accept", "start planned"); const before = received.length;
     await Promise.all([webhook("http-set", "45x10"), webhook("http-set", "45x10")]);
     const persisted = await row("http-set");
     expect(received).toHaveLength(before + 1); expect(received.at(-1)).toMatchObject({ to: httpAddress, biz_opaque_callback_data: persisted.id });
-    expect(received.at(-1)!.text.body).toBe(persisted.body); expect(persisted.body).toContain("45 kg"); expect(persisted.body).toContain("x 10");
+    expect(received.at(-1)!.text.body).toBe(persisted.body); expect(persisted.body).toMatch(/^\*✅ Set recorded\*\n\n/); expect(persisted.body).toContain("45 kg"); expect(persisted.body).toContain("x 10");
     expect((await app.pool.query("select load_value,weight_unit,load_semantics,reps from workout_sets where user_id=$1", [other.userId])).rows).toEqual([{ load_value: "45", weight_unit: "KG", load_semantics: "TOTAL_LOAD", reps: 10 }]); expect(interpret).not.toHaveBeenCalled();
     rateLimit = true; await webhook("http-retry", "45x9"); const pending = await row("http-retry"); expect(pending.status).toBe("FAILED_RETRYABLE");
     rateLimit = false; await app.pool.query("update outbound_messages set next_attempt_at=now()-interval '1 second' where id=$1", [pending.id]); await webhook("http-retry", "45x9");

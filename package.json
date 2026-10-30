@@ -12,6 +12,10 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
+    "check:ai-config": "node scripts/check-ai-config.mjs",
+    "test:ai-guards": "vitest run tests/ai-config --reporter=dot",
+    "verify": "npm run -s check:ai-config && npm run -s lint && vitest run --reporter=dot",
     "lint": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
@@ -22,7 +26,8 @@
     "test:postgres": "REQUIRE_POSTGRES_TESTS=1 vitest run tests/postgres --maxWorkers=2 --minWorkers=1",
     "eval": "vitest run packages/evals tests/integration/ai packages/ai packages/contracts/src/ai",
     "eval:real-provider": "RUN_REAL_PROVIDER_EVAL=1 vitest run packages/evals/src/real-provider-smoke.test.ts",
-    "dev": "next dev apps/web --webpack",
+    "eval:conversation:live": "RUN_LIVE_CONVERSATION_EVAL=1 tsx packages/evals/src/live-conversation-acceptance.ts",
+    "dev": "node --experimental-strip-types scripts/dev.mjs",
     "start": "NODE_ENV=production node --experimental-strip-types scripts/check-runtime.mjs && next start apps/web",
     "build": "next build apps/web --webpack",
     "test:us4:web": "playwright test -c tests/e2e/us4/playwright.config.ts",
@@ -33,11 +38,18 @@
     "test:phase-a:web": "playwright test -c tests/e2e/phase-a/playwright.config.ts",
     "check:runtime": "node --experimental-strip-types scripts/check-runtime.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
+    "memory:prune": "tsx scripts/prune-conversation-memory.ts",
     "whatsapp:delivery": "tsx scripts/whatsapp-delivery.ts",
     "test:whatsapp:transport": "REQUIRE_POSTGRES_TESTS=1 vitest run tests/postgres/whatsapp-transport.test.ts",
     "test:whatsapp:ownership": "REQUIRE_POSTGRES_TESTS=1 vitest run tests/postgres/whatsapp-ownership.test.ts",
     "test:whatsapp:web": "playwright test -c tests/e2e/whatsapp/playwright.config.ts",
-    "test:whatsapp:live": "tsx scripts/whatsapp-live-smoke.ts"
+    "test:whatsapp:live": "tsx scripts/whatsapp-live-smoke.ts",
+    "eval:conversation:closure": "RUN_LIVE_CONVERSATION_EVAL=1 tsx packages/evals/src/closure-live.ts",
+    "test:whatsapp:conversations": "REQUIRE_POSTGRES_TESTS=1 vitest run tests/postgres/authenticated-conversations.test.ts --maxWorkers=1 --minWorkers=1",
+    "eval:conversation:scale": "RUN_SCALE_CONVERSATION_EVAL=1 vitest run tests/postgres/conversation-scale.test.ts --maxWorkers=1 --minWorkers=1",
+    "reminders:run": "tsx scripts/workout-reminders.ts",
+    "reminders:worker": "tsx scripts/workout-reminders.ts --send --watch",
+    "test:reminders:web": "playwright test -c tests/e2e/reminders/playwright.config.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

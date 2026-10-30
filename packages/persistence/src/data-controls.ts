@@ -19,6 +19,7 @@ export class DataControls {
     const queries = {
       account: "select id,email,created_at,id as user_id from users where id=$1 and deleted_at is null",
       profile: "select * from user_profiles where user_id=$1",
+      conversationMemory: "select user_id,role,content,occurred_at,expires_at from conversation_turns where user_id=$1 and expires_at>clock_timestamp() order by occurred_at,id",
       links: "select l.*,a.provider,a.provider_account_id from whatsapp_identity_links l join whatsapp_provider_user_identities i on i.id=l.whatsapp_provider_user_identity_id join whatsapp_provider_accounts a on a.id=i.whatsapp_provider_account_id where l.user_id=$1 order by l.id",
       routines: "select * from routines where user_id=$1 order by id",
       cursors: "select * from routine_sequence_cursors where user_id=$1 order by id",
@@ -41,7 +42,7 @@ export class DataControls {
     return { categories: Object.entries(data).map(([category, rows]) => ({ category, count: rows.length })), requests: (await this.db.query("select * from data_control_requests where user_id=$1 order by requested_at desc", [this.userId])).rows.map(row => this.view(row)) };
   }
   private digest(data: Awaited<ReturnType<DataControls["ownedData"]>>, type: DeletionType) {
-    return hash(JSON.stringify(type === "DELETE_ACCOUNT" ? data : { workouts: data.workouts, sessionExercises: data.sessionExercises, sets: data.sets, corrections: data.corrections }));
+    return hash(JSON.stringify(type === "DELETE_ACCOUNT" ? data : { workouts: data.workouts, sessionExercises: data.sessionExercises, sets: data.sets, corrections: data.corrections, conversationMemory: data.conversationMemory }));
   }
   async request(type: "EXPORT" | DeletionType, key: string) {
     const prior = (await this.db.query("select * from data_control_requests where user_id=$1 and idempotency_key=$2", [this.userId, key])).rows[0];
@@ -71,6 +72,7 @@ export class DataControls {
       return this.view((await this.db.query("select * from data_control_requests where id=$1", [id])).rows[0]);
     }
     const sets = await this.db.query("update workout_sets set status='DELETED' where user_id=$1 and status <> 'DELETED'", [this.userId]);
+    await this.db.query("delete from conversation_turns where user_id=$1", [this.userId]);
     await this.db.query("delete from conversation_states where user_id=$1", [this.userId]);
     const workouts = await this.db.query("update workout_sessions set status='DISCARDED',discarded_at=coalesce(discarded_at,clock_timestamp()),data_deleted_at=clock_timestamp(),active_session_exercise_id=null,completion_choice_pending=false,version=version+1 where user_id=$1 and data_deleted_at is null", [this.userId]);
     await this.db.query("update users set data_control_generation=data_control_generation+1 where id=$1", [this.userId]);

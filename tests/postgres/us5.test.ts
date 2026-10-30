@@ -35,7 +35,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
 
   it("partial done persists a choice; continue/resume preserves the same workout and exercise context", async () => {
     await send("45x10"); const before = (await query("select id,active_session_exercise_id from workout_sessions"))[0];
-    expect((await send("done")).body).toBe("Unfinished work remains. Save completed, save incomplete, continue, or discard?");
+    expect((await send("done")).body).toBe("*🤔 Quick question*\n\nUnfinished work remains.\n\nReply with one option:\n• Save completed\n• Save incomplete\n• Continue\n• Discard");
     expect(await app.history(userId)).toHaveLength(0); expect(await cursor()).toBe(0);
     await restart(); expect((await query("select completion_choice_pending from workout_sessions"))[0].completion_choice_pending).toBe(true);
     await send("continue"); await send("resume");
@@ -48,7 +48,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
   it("explicit completed finish survives restart and replay; summary uses persisted values and duration", async () => {
     await send("45x10"); await query("update workout_sessions set started_at=now()-interval '125 seconds'");
     await send("done"); const first = await send("save completed", "finish-once", true);
-    expect(first.body).toContain("Upper: completed"); expect(first.body).toContain("1 exercises, 1 sets - 2m 5s"); expect(first.body).toContain("45 LB each x 10");
+    expect(first.body).toContain("Upper: completed"); expect(first.body).toContain("*Session totals*\nExercises: 1\nSets: 1\nDuration: 2m 5s"); expect(first.body).toContain("45 LB each x 10");
     await restart(); expect((await send("save completed", "finish-once")).body).toBe(first.body);
     expect((await app.history(userId))[0]?.workout).toMatchObject({ status: "COMPLETED", durationSeconds: 125 });
     expect(await cursor()).toBe(1);
@@ -61,7 +61,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
   });
 
   it("save incomplete retains data and does not advance; empty completion never fabricates a completed session", async () => {
-    expect((await send("done")).body).toBe("No recorded sets. Save incomplete, continue, or discard?");
+    expect((await send("done")).body).toBe("*🤔 Quick question*\n\nNo recorded sets.\n\nReply with one option:\n• Save incomplete\n• Continue\n• Discard");
     expect((await send("save completed")).body).toContain("No recorded sets");
     await send("45x10"); await send("save incomplete"); await restart();
     expect((await app.history(userId))[0]?.workout.status).toBe("INCOMPLETE"); expect(await prior()).toHaveLength(1); expect(await cursor()).toBe(0);
@@ -87,7 +87,7 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
     mock.enqueue({ schemaVersion: "workout-action.v1", action: { type: "MAP_EXERCISE_ALIAS", alias: "incline", exerciseRef: "Incline Dumbbell Press" }, confidence: "high", requiresClarification: false, rationaleCodes: [], forbiddenDirectMutation: true });
     await send("call Incline Dumbbell Press incline"); await send("confirm");
     expect((await send("add Smith Incline Press today")).body).toContain("Reply yes");
-    expect((await send("confirm")).body).toContain("No previous record");
+    expect((await send("confirm")).body).toContain("No earlier sets recorded for this exercise yet");
     await restart();
     const expected = await prior(); expect(expected?.map(set => [set.loadValue,set.reps])).toEqual([[45,10],[50,8],[45,9]]);
     expect(await app.previousPerformance(userId, "incline", "LB", "PER_HAND_PER_SIDE")).toEqual(expected);
@@ -149,7 +149,8 @@ pgDescribe("US5 durable deterministic context, records and lifecycle", () => {
   it("concurrent completion cannot advance the cursor twice", async () => {
     await send("45x10,45x9,45x8");
     const results = await Promise.allSettled([send("done", "finish-a"), send("done", "finish-b")]);
-    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    // Both inbound messages recover successfully; only one durable completion is permitted.
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(2);
     expect(await app.history(userId)).toHaveLength(1); expect(await cursor()).toBe(1);
     expect(await query("select id from command_executions where command_type='FINISH_WORKOUT'")).toHaveLength(1);
   });

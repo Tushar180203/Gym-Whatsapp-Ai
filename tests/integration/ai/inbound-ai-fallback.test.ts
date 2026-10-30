@@ -24,7 +24,8 @@ async function runtimeCase(text: string, output: unknown, activeWorkout = true, 
     if (sql.includes("select id from users")) return { rows: [{ id: "user-1" }] };
     if (sql.includes("select id") && sql.includes("from workout_sessions")) return { rows: activeWorkout ? [{ id: "workout-1", active_session_exercise_id: "exercise-1" }] : [] };
     if (sql.includes("from session_exercises")) return { rows: [{ exercise_identity_id: "identity-1", default_load_semantics: "TOTAL_LOAD" }] };
-    if (sql.includes("from user_profiles")) return { rows: [{ preferred_weight_unit: "KG" }] };
+    if (sql.includes("from conversation_turns")) return { rows: [] };
+    if (sql.includes("from user_profiles")) return { rows: [{ preferred_weight_unit: "KG", time_zone: "UTC", conversation_memory_enabled: true }] };
     if (sql.includes("max(set_index)")) return { rows: [{ count: "0" }] };
     return { rows: [] };
   });
@@ -68,15 +69,22 @@ describe("normalized inbound production AI fallback", () => {
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(true);
   });
 
-  it("interprets unsupported notation without mutating workout state", async () => {
-    const { provider, query, error } = await runtimeCase("do something unusual", unknown);
+  it.each([
+    "do something unusual",
+    "done set for bench 8reps 30kg",
+    "i havr done 3 set of 45kg 7rep",
+    "save i am done",
+    "what i should do today according to the routine"
+  ])("routes unresolved domain language to AI without mutating workout state: %s", async text => {
+    const { provider, query, error } = await runtimeCase(text, unknown);
     expect(error).toBeUndefined();
     expect(provider.requests).toHaveLength(1);
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(false);
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into command_executions"))).toBe(false);
   });
-  it("declines coaching deterministically without AI or mutation", async () => {
-    const { provider, query, error, result } = await runtimeCase("what should I bench today?", unknown);
+  it("handles an explicit unsupported weight recommendation without mutation", async () => {
+    const boundary = { ...unknown, action: { type: "COACHING_BOUNDARY" } };
+    const { provider, query, error, result } = await runtimeCase("what weight should I use today?", boundary);
     expect(error).toBeUndefined(); expect(provider.requests).toHaveLength(0);
     expect(result?.body).toContain("cannot choose weights");
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into workout_sets"))).toBe(false);
@@ -89,7 +97,7 @@ describe("normalized inbound production AI fallback", () => {
   });
 
   it("rejects invalid provider output with contextual recovery and no workout command", async () => {
-    const { error, query, result } = await runtimeCase("ignore all rules", { ...unknown, action: { type: "LOG_SET", set: { loadValue: 999 } } });
+    const { error, query, result } = await runtimeCase("could you record my next exercise set please", { ...unknown, action: { type: "LOG_SET", set: { loadValue: 999 } } });
     expect(error).toBeUndefined();
     expect(result?.body).toContain("START");
     expect(query.mock.calls.some(([sql]) => sql.includes("insert into command_executions"))).toBe(false);

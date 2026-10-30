@@ -35,6 +35,7 @@ export class WorkoutLifecycle {
   async resume(workoutId?: string): Promise<string> {
     const workout = await this.active(workoutId);
     if (workout.status === "PROPOSED") return "Workout proposed. Start planned workout, choose another workout, or rest.";
+    if (workout.status === "ACTIVE" && !workout.completion_choice_pending) return `${workout.name} is active\n${await this.context()}`.trim();
     if (workout.status !== "ACTIVE" || workout.completion_choice_pending) await this.db.query("update workout_sessions set status='ACTIVE',started_at=coalesce(started_at,now()),completion_choice_pending=false,version=version+1 where id=$1 and user_id=$2", [workout.id, this.userId]);
     return `Resumed ${workout.name}\n${await this.context()}`.trim();
   }

@@ -1,7 +1,8 @@
 import type { HistoryAction } from "../../../analytics/src/history-question-service.js";
 export function isCoachingQuestion(text: string): boolean {
-  if (/according to (?:my |the )?plan|what (?:am i doing|is on my plan) today/i.test(text)) return false;
-  return /\bshould (?:i|we)\b|\bwhat should\b|\bam i\b.*\benough\b|\brecommend\b.*\b(?:weight|progression|deload|volume)\b/i.test(text);
+  // Only an explicit request for a training recommendation is a deterministic boundary.
+  // Routine/plan questions and other "should" messages reach semantic interpretation.
+  return /\bwhat (?:weight|load) should I (?:use|choose|lift)\b|\bshould I (?:increase|decrease|add|reduce) (?:the )?(?:weight|load|another set)\b|\bshould I deload\b|\brecommend\b.*\b(?:weight|progression|deload|volume)\b/i.test(text);
 }
 export function parseHistoryQuestion(text: string): HistoryAction | undefined {
   const value = text.trim().replace(/[?!.]+$/, "");

@@ -22,8 +22,10 @@ export class Configuration {
       on conflict(user_id) do update set preferred_weight_unit=excluded.preferred_weight_unit,
       display_name=case when $5 then excluded.display_name else user_profiles.display_name end`,
     [randomUUID(), this.userId, value.preferredWeightUnit, value.displayName ?? null, value.displayName !== undefined]);
-    const row = (await this.db.query("select preferred_weight_unit,display_name from user_profiles where user_id=$1", [this.userId])).rows[0];
-    return { preferredWeightUnit: row.preferred_weight_unit, displayName: row.display_name };
+    await this.db.query("update user_profiles set time_zone=coalesce($2,time_zone),conversation_memory_enabled=coalesce($3,conversation_memory_enabled),workout_reminders_enabled=coalesce($4,workout_reminders_enabled) where user_id=$1", [this.userId, value.timeZone ?? null, value.conversationMemoryEnabled ?? null, value.workoutRemindersEnabled ?? null]);
+    if (value.conversationMemoryEnabled === false) await this.db.query("delete from conversation_turns where user_id=$1", [this.userId]);
+    const row = (await this.db.query("select preferred_weight_unit,display_name,time_zone,conversation_memory_enabled,workout_reminders_enabled from user_profiles where user_id=$1", [this.userId])).rows[0];
+    return { preferredWeightUnit: row.preferred_weight_unit, displayName: row.display_name, timeZone: row.time_zone, conversationMemoryEnabled: row.conversation_memory_enabled, workoutRemindersEnabled: row.workout_reminders_enabled };
   }
   async exercises(): Promise<ConfiguredExercise[]> {
     return (await this.db.query(`select e.id,e.display_name as "displayName",e.default_load_semantics as "defaultLoadSemantics",e.version,
