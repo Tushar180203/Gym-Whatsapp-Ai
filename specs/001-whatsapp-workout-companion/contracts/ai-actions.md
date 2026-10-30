@@ -1,5 +1,17 @@
 # Contract: AI Structured Actions
 
+## Closure semantics (2026-10-09)
+
+Prompt v9 keeps QUERY_PLAN as the canonical complete planned-session intent and QUERY_CURRENT_STATE for position/progress. No overlapping QUERY_TODAYS_PLAN alias is introduced. Frozen v6/v7/v8 prompts support same-corpus comparisons. Optional requestKind is USER_DOMAIN_INTENT / META_INSTRUCTION / POLICY_BYPASS_ATTEMPT; requiresConfirmation is advisory and cannot satisfy or waive local policy. Meta/bypass proposals cannot execute. Explicit supplied-authority patterns also fail locally even if the model misclassifies them. Corrections are sparse patches of explicitly changed fields, not copied context snapshots; muscle analytics subjects must retain the requested muscle. A listed exercise alone cannot resolve a pronoun when active/recent references are absent.
+
+## Reliability contract extension (2026-10-09)
+
+Prompt v6 adds locally validated GREETING, HELP, REPEAT, CONTINUE, CANCEL_PENDING_OPERATION, QUERY_PLAN, QUERY_CURRENT_STATE, COACHING_BOUNDARY, ANSWER_PENDING_QUESTION, DRAFT_SETS, NEXT_EXERCISE, PREVIOUS_EXERCISE and session REORDER_EXERCISE proposals. Existing START/RESUME/FINISH, session changes, history/PR/analytics, custom identities, aliases and permanent routine requests remain canonical. Lifecycle choices still pass deterministic confirmation policy; no model field confirms a protected request. Permanent reorder is translated into the existing confirmed routine request.
+
+Pending scope answers may return canonical SESSION_ONLY/PERMANENT_ROUTINE in `answer`; exercise answers preserve the reference. DRAFT_SETS requires an evidenced nonnegative load and 1–20 explicitly supplied sets (single count may be implicit), followed by exact positive completed reps. LOG_MULTIPLE_SETS is bounded to 20 locally. Number-word evidence is bounded lexical validation, not a fuzzy digit correction or an alternative intent engine.
+
+The provider receives an explicit context allowlist, omitting owner IDs, idempotency identifiers and arbitrary caller fields. Current exercise convention, preferred unit, same-exercise previous set, recent references, pending question/parent and partial draft are available. Gemini schemas omit provider array bounds after live HTTP-400 diagnostics; strict local schemas retain every bound and field whitelist. Model numeric/scope/identity proposals remain untrusted until domain validation. Low-confidence replacement targets are not retained for later accidental authorization.
+
 ## Conversation Context (2026-10-08)
 
 Prompt v5 adds bounded `conversationMode`, pending operation/slot, current exercise, known owner-visible names/confirmed aliases and allowed action types. These are data, never instructions or permission. The local `workout-action.v1` ProposedActionEnvelope and Gemini provider schema remain unchanged. Low confidence or missing targets clarify; unsupported numeric proposals cannot enter a continuation. Pending answers are interpreted deterministically before AI. The orchestrator owns memory; Gemini never authors ConversationState, confirmations or authoritative factual values. Normal fixtures use mocks, with live provider evaluation still explicitly opt-in.

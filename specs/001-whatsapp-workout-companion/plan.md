@@ -1,5 +1,9 @@
 # Implementation Plan: WhatsApp Workout Companion
 
+## Conversational reliability hardening (2026-10-09)
+
+The current user request authorizes the language-understanding audit and core hardening in [conversational-reliability.md](conversational-reliability.md). Language quality, execution safety and provider availability are measured separately. AI bypass is diagnostic, not an acceptance target. Existing deterministic ownership, confirmation, transactions and delivery boundaries remain authoritative. Partial drafts and contextual semantic actions extend the existing in-process orchestrator and JSON state; there is no new service or fitness capability. This extension is not declared complete without the requested realistic acceptance evidence.
+
 ## Approved Conversation Extension (2026-10-08)
 
 The user's domain conversational robustness request is implemented as a domain `ConversationOrchestrator`, typed state/grammar/reference/response modules and a PostgreSQL application adapter. This is an in-process extension of the approved modular monolith, not another interpreter service, agent, queue or transport. See [conversation-orchestration.md](conversation-orchestration.md). T130-T135 trace the extension; existing release/privacy decisions remain unchanged.
@@ -430,3 +434,5 @@ No constitution violations are known.
 ## Complexity Tracking
 
 No constitution violations require complexity justification.
+
+Closure implementation reuses the existing orchestrator/ports/store. Persistence records typed outcome category/effect from owned state changes and confirmation evidence; the planner formats it for WhatsApp. Authenticated transcripts use a local HTTP webhook server, real HMAC/ownership/database processing and controlled accepted outbound delivery. Gemini interpretation quality is evaluated separately with immutable v6/v7 same-corpus artifacts.

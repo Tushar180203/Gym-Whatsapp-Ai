@@ -467,3 +467,32 @@ Task: "T111 [US6] Add Playwright test in tests/e2e/us6-history-analytics.spec.ts
 - Permanent, destructive, completed-history, identity-merge, and routine-change mutations remain confirmation-gated and at-most-once.
 - Messaging mutations remain idempotent across duplicate delivery, retry, and crash-after-commit-before-outbound-send cases.
 - Raw user chat and workout text are not logged by default.
+
+
+## Conversational reliability hardening (2026-10-09)
+
+- [X] T136 Audit inbound architecture and distinguish live reports from synthetic baseline evidence in conversational-reliability.md.
+- [ ] T137 Extend universal semantic contract for factual/social/control/pending/draft operations and safe contextual inputs.
+- [ ] T138 Preserve typed parents across semantic interruptions and support partial single/multiple set drafts.
+- [X] T139 Accept numeric words through bounded local evidence validation without inventing numbers or relaxing ownership/confirmation.
+- [ ] T140 Add explicit routing validation/resolution/response telemetry and contextual responses.
+- [X] T141 Build 300+ diverse turns across all 30 requested scenario families with durable-state assertions and reported-failure regressions.
+- [ ] T142 Run all existing validation, restart/replay/failure/injection acceptance and opt-in live semantic evaluation; publish model and system metrics separately.
+
+T139 evidence: bounded number words, natural units and signed values are checked locally; existing numeric/domain policy remains authoritative. T141 evidence: 50 multi-turn scenarios / 391 inbound turns in the PostgreSQL corpus, plus standalone replay/restart/provider/adversarial regressions. These execute mocked proposals and do not establish live semantic accuracy. Exact full WhatsApp transcripts were not supplied; reported examples are labeled accordingly. T137/T138/T140/T142 remain open for the complete requested taxonomy, general continuation/response-planner migration and broad live acceptance.
+
+## Conversational closure pass
+
+- [X] T143 Make all evaluation results versioned, separated and exclusively created; freeze baseline prompt.
+- [ ] T144 Close plan/state and security interpretation gaps with versioned semantic guidance and real-provider comparison.
+- [X] T145 Finish typed outcome → response-category → WhatsApp planning using persistence evidence.
+- [X] T146 Verify nested continuation persistence across authenticated interruption/restart/replay/identity/scope flows.
+- [ ] T147 Run 110-case live semantic corpus (50 supported, 20 ambiguity, 20 typos, 20 security) and preserve same-corpus prompt comparison.
+- [X] T148 Run 15 authenticated webhook transcript families and every reported failure with durable, pending and response assertions.
+- [ ] T149 Run required validation and publish the measured 29-item closure report.
+
+## WhatsApp reply presentation (2026-10-29)
+
+- [X] T150 Define the user-requested reply structure in [whatsapp-message-style.md](whatsapp-message-style.md), retaining existing workout facts, actions, and confirmations.
+- [X] T151 Add deterministic shared WhatsApp headings, spacing, set/choice lists, structured workout context and summaries, plus persisted connection/plan-ready notifications.
+- [X] T152 Verify exact layouts, repeat rendering, provider length boundaries, saved/delivered body equality, retries, restart, confirmations, and ownership; record offline and disposable-database checks.

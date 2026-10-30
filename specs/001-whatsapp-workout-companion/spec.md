@@ -2,6 +2,8 @@
 
 **Approved implementation clarification (2026-10-08)**: The user's A-AH conversational robustness request is traced in [conversation-orchestration.md](conversation-orchestration.md) and T130-T135. It strengthens interaction inside existing workout, routine and factual-history behavior without adding product requirements, weakening confirmations or approving Phase C/public release.
 
+**Approved presentation refinement (2026-10-29)**: The user requested professionally structured WhatsApp replies. [whatsapp-message-style.md](whatsapp-message-style.md) defines the headings, spacing, set lists, choices, and notification presentation for existing conversation behavior.
+
 **Feature Branch**: `001-whatsapp-workout-companion`
 
 **Created**: 2026-10-06

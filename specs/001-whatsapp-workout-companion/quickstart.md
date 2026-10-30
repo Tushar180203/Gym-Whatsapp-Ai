@@ -248,3 +248,15 @@ Expected outcome:
 - Invalid webhooks do not enter application processing.
 - Unlinked messages cannot mutate workout state.
 - Logs contain safe identifiers and error categories, not unnecessary raw chat content.
+
+## Conversational closure evaluation
+
+`npm run eval:conversation:closure` is explicitly opt-in, uses synthetic structured context and the configured Gemini key, and evaluates the current frozen v12 prompt on the 111-case semantic corpus. Set `CLOSURE_PROMPTS=v9,v12` to compare the frozen v9 baseline and v12 on the same hashed corpus. Default pacing is 13 seconds; provider failures count against accuracy. `CLOSURE_IDS=...` creates a distinct labeled subset run, never a canonical-baseline overwrite. Frozen v6-v11 remain available for intermediate comparisons.
+
+`CLOSURE_PROMPTS=v9 CLOSURE_CORPUS=historical-v3 npm run eval:conversation:closure` evaluates historical language plus alias, typo and unresolved-reference supplements. Keep the measured v2 corpus unchanged. The routing probe excludes deterministic diagnostic cases from semantic acceptance, and repeated cases are counted once when aggregating results.
+
+`node --import tsx packages/evals/src/closure-report.ts <baseline-artifact> <candidate-artifact> [supplement-artifacts...]` applies one scoring version to original observations and creates new reassessment/comparison artifacts. It checks identical baseline/candidate corpus hashes and IDs and forbids aggregation of different live prompts/models. It never edits its input artifacts. Model quality is reported separately from system safety; this command does not infer durable safety from model scores.
+
+`TEST_DATABASE_URL=<disposable-local-database> npm run test:whatsapp:conversations` executes 15 controlled authenticated transcript families plus historical-regression, alias-restart and permanent-confirmation cases through the production webhook route with signed provider payloads and accepted fake-provider delivery. Semantic proposals are mocked and reported as such. These are not captured human conversations or real Meta delivery.
+
+All evaluation writers use `evaluation-runs/<result-type>/<timestamp>_<uuid>_<checkpoint>.json`, exclusive create, and metadata for prompt/model/corpus/git/result type. Every checkpoint is immutable. Canonical baseline files are read-only inputs.

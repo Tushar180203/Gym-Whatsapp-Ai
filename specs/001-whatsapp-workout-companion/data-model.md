@@ -1,5 +1,7 @@
 # Data Model: WhatsApp Workout Companion
 
+Reliability extension (2026-10-09): SET_DRAFT adds evidenced load/unit/count and the exact current session-exercise ID to the bounded typed continuation union. Existing JSONB schema accepts this additive locally validated frame; no SQL migration is required. Factual/social interruptions do not pop it. Logical expiry, workout identity/version and active-exercise checks protect subsequent reps. Logging during a single unconfirmed replacement can refresh its version only when the original source still exists in the same workout; protected confirmation versions are never refreshed by this rule.
+
 ## ConversationState (2026-10-08)
 
 Migration `0010_conversation.sql` adds one `conversation_states` row per product user, with a user foreign key, matching relational/JSON versions, bounded JSON continuation stack and updated timestamp. `ConversationStateSchema` is the local authority for its typed shape; it is not model-authored memory.
@@ -766,3 +768,5 @@ Rules:
 - `MuscleAnalyticsService`: weekly primary-muscle sets with confirmed classification.
 - `WorkoutAnalyticsService`: frequency, completed count, last-trained dates, monthly counts.
 - `HistoryQuestionService`: bounded factual answers from persisted records.
+
+Closure continuation: ALIAS is an additive JSONB frame with alias, owned target reference and TARGET/NAME slot. It uses the existing three-frame bound, expiry, owner lock and workout version guard; no migration or new table. Name clarification goes through semantic interpretation so greetings/questions cannot become aliases. Confirmation remains the existing single-use durable identity operation.
