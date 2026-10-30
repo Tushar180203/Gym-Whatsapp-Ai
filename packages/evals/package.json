@@ -1,0 +1,9 @@
+{
+  "name": "@gym-whatsapp-ai/evals",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "vitest run packages/evals tests/integration/ai packages/ai packages/contracts/src/ai",
+    "eval:real-provider": "RUN_REAL_PROVIDER_EVAL=1 vitest run packages/evals/src/real-provider-smoke.test.ts"
+  }
+}

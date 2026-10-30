@@ -1,0 +1,2925 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "promptVersion": "intent-interpreter.prompt.v6",
+  "promptHash": "62a55e5c4a9141dfe336f0e26730e601fcc300a7b9c3ee1bb09ace6b9a481ac9",
+  "schemaHash": "f57783dbdd04820353b72655e041c36eceb3f83bee192081b4a5fce3c1eb14b7",
+  "generatedAt": "2026-10-09T07:01:08.198Z",
+  "syntheticInputsOnly": true,
+  "liveWhatsAppDelivery": false,
+  "summary": {
+    "corpusCases": 9,
+    "liveAiCases": 9,
+    "deterministicBypass": 0,
+    "deterministicBypassPercent": 0,
+    "correct": 8,
+    "incorrect": 1,
+    "clarificationSafe": 0,
+    "locallyRejected": 0,
+    "providerFailures": 0,
+    "semanticAccuracyPercent": 88.88888888888889,
+    "clarificationSafePercent": 0,
+    "safeFailurePercent": 100,
+    "conversationSuccessPercent": 88.88888888888889,
+    "unsafeMutationCases": 0,
+    "injectedFailureCases": 7,
+    "injectedFailureUnsafeMutations": 0,
+    "categoryCounts": {
+      "plan": {
+        "total": 2,
+        "ai": 2,
+        "incorrect": 0,
+        "outcomeFailures": 0
+      },
+      "informal": {
+        "total": 1,
+        "ai": 1,
+        "incorrect": 1,
+        "outcomeFailures": 1
+      },
+      "natural-sets": {
+        "total": 4,
+        "ai": 4,
+        "incorrect": 0,
+        "outcomeFailures": 0
+      },
+      "partial": {
+        "total": 1,
+        "ai": 1,
+        "incorrect": 0,
+        "outcomeFailures": 0
+      },
+      "pending-semantic": {
+        "total": 1,
+        "ai": 1,
+        "incorrect": 0,
+        "outcomeFailures": 0
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "plan-2",
+      "group": "plan",
+      "message": "what's on the menu today?",
+      "expected": "current persisted Push plan, not prior history/coaching",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_24a45a4026988873e75f65ed",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Cable Fly",
+              "Shoulder Press",
+              "Lateral Raise",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "QUERY_PLAN"
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "QUERY_PLAN_SAVED_SESSION"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Active Push\n1. Barbell Bench Press: 3 sets, 8-10 reps\n2. Cable Fly: 3 sets, 8-10 reps\n3. Shoulder Press: 3 sets, 8-10 reps\n4. Lateral Raise: 3 sets, 8-10 reps\n5. Incline Press: 3 sets, 8-10 reps\nLog a set, NEXT, or DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "READ_ONLY",
+        "schemaValidated": true,
+        "aiActionType": "QUERY_PLAN",
+        "responseCategory": "PLAN_FACT",
+        "finalAction": "QUERY_PLAN"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "plan-4",
+      "group": "plan",
+      "message": "what have I got today?",
+      "expected": "current persisted Push plan, not prior history/coaching",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_7a7338894a02fb8546daba9e",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Shoulder Press",
+              "Lateral Raise",
+              "Incline Press",
+              "Cable Fly",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "QUERY_PLAN"
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "QUERY_PLAN_TODAY"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Active Push\n1. Barbell Bench Press: 3 sets, 8-10 reps\n2. Cable Fly: 3 sets, 8-10 reps\n3. Shoulder Press: 3 sets, 8-10 reps\n4. Lateral Raise: 3 sets, 8-10 reps\n5. Incline Press: 3 sets, 8-10 reps\nLog a set, NEXT, or DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "READ_ONLY",
+        "schemaValidated": true,
+        "aiActionType": "QUERY_PLAN",
+        "responseCategory": "PLAN_FACT",
+        "finalAction": "QUERY_PLAN"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "informal-1",
+      "group": "informal",
+      "message": "whts today workout",
+      "expected": "current persisted plan, not history/coaching",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_214071b7a8996a52d1625074",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Incline Press",
+              "Cable Fly",
+              "Lateral Raise",
+              "Shoulder Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "QUERY_CURRENT_STATE"
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "QUERY_CURRENT_STATE_ROUTINE"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Push: You're on Barbell Bench Press. 3 sets × 8–10.\n2 sets logged.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "READ_ONLY",
+        "schemaValidated": true,
+        "aiActionType": "QUERY_CURRENT_STATE",
+        "responseCategory": "HISTORY_FACT",
+        "finalAction": "QUERY_CURRENT_STATE"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "INCORRECT",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": false
+    },
+    {
+      "id": "natural-sets-1",
+      "group": "natural-sets",
+      "message": "I havr done 3 sets of 45kg each 7reps",
+      "expected": "three persisted 45 x 7 sets, no lifecycle capture",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_662d94d93f3b769a798593ae",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Cable Fly",
+              "Incline Press",
+              "Lateral Raise",
+              "Shoulder Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "LOG_MULTIPLE_SETS",
+              "sets": [
+                {
+                  "exerciseRef": "Barbell Bench Press",
+                  "loadValue": 45,
+                  "weightUnit": "KG",
+                  "loadSemantics": "TOTAL_LOAD",
+                  "reps": 7
+                },
+                {
+                  "exerciseRef": "Barbell Bench Press",
+                  "loadValue": 45,
+                  "weightUnit": "KG",
+                  "loadSemantics": "TOTAL_LOAD",
+                  "reps": 7
+                },
+                {
+                  "exerciseRef": "Barbell Bench Press",
+                  "loadValue": 45,
+                  "weightUnit": "KG",
+                  "loadSemantics": "TOTAL_LOAD",
+                  "reps": 7
+                }
+              ]
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "LOG_MULTIPLE_SETS_EXPLICIT"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Log sets for confirmed exercise applied.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "REPLIED",
+        "schemaValidated": true,
+        "aiActionType": "LOG_MULTIPLE_SETS",
+        "resolvedIntent": "LOG_MULTIPLE_SETS",
+        "responseCategory": "RECOVERY",
+        "finalAction": "LOG_MULTIPLE_SETS"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": true,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "natural-sets-2",
+      "group": "natural-sets",
+      "message": "I've done three sets with forty-five kilos and got seven on all of them",
+      "expected": "three persisted 45 x 7 sets, no lifecycle capture",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_ed7bd1e23e01ea668464fa56",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Cable Fly",
+              "Shoulder Press",
+              "Lateral Raise",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "LOG_MULTIPLE_SETS",
+              "sets": [
+                {
+                  "exerciseRef": "Barbell Bench Press",
+                  "loadValue": 45,
+                  "weightUnit": "KG",
+                  "loadSemantics": "TOTAL_LOAD",
+                  "reps": 7
+                },
+                {
+                  "exerciseRef": "Barbell Bench Press",
+                  "loadValue": 45,
+                  "weightUnit": "KG",
+                  "loadSemantics": "TOTAL_LOAD",
+                  "reps": 7
+                },
+                {
+                  "exerciseRef": "Barbell Bench Press",
+                  "loadValue": 45,
+                  "weightUnit": "KG",
+                  "loadSemantics": "TOTAL_LOAD",
+                  "reps": 7
+                }
+              ]
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "EXPLICIT_MULTIPLE_SETS"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Log sets for confirmed exercise applied.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "REPLIED",
+        "schemaValidated": true,
+        "aiActionType": "LOG_MULTIPLE_SETS",
+        "resolvedIntent": "LOG_MULTIPLE_SETS",
+        "responseCategory": "RECOVERY",
+        "finalAction": "LOG_MULTIPLE_SETS"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": true,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "natural-sets-3",
+      "group": "natural-sets",
+      "message": "done 45kg 7 reps",
+      "expected": "one persisted 45 x 7 set",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_f3ea685edbb5df3e6c4e5ccc",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Lateral Raise",
+              "Shoulder Press",
+              "Cable Fly",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "LOG_SET",
+              "set": {
+                "exerciseRef": "Barbell Bench Press",
+                "loadValue": 45,
+                "weightUnit": "KG",
+                "loadSemantics": "TOTAL_LOAD",
+                "reps": 7
+              }
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "EXPLICIT_SET_LOG"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Log sets for confirmed exercise applied.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "REPLIED",
+        "schemaValidated": true,
+        "aiActionType": "LOG_SET",
+        "resolvedIntent": "LOG_SET",
+        "responseCategory": "RECOVERY",
+        "finalAction": "LOG_SET"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": true,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "natural-sets-4",
+      "group": "natural-sets",
+      "message": "I got seven with forty-five",
+      "expected": "one persisted 45 x 7 set",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_13dad0aa66b0329438889c41",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Shoulder Press",
+              "Incline Press",
+              "Lateral Raise",
+              "Cable Fly",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "LOG_SET",
+              "set": {
+                "exerciseRef": "Barbell Bench Press",
+                "loadValue": 45,
+                "weightUnit": "KG",
+                "loadSemantics": "TOTAL_LOAD",
+                "reps": 7
+              }
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "EXPLICIT_SET_LOGGED"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Log sets for confirmed exercise applied.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "REPLIED",
+        "schemaValidated": true,
+        "aiActionType": "LOG_SET",
+        "resolvedIntent": "LOG_SET",
+        "responseCategory": "RECOVERY",
+        "finalAction": "LOG_SET"
+      },
+      "clarification": false,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": true,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "partial-1",
+      "group": "partial",
+      "message": "3 sets at 45kg",
+      "expected": "partial draft asks reps without recording",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_2af1c23b7cd68f6aff7ebb10",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Cable Fly",
+              "Incline Press",
+              "Lateral Raise",
+              "Shoulder Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "DRAFT_SETS",
+              "loadValue": 45,
+              "weightUnit": "KG",
+              "count": 3
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "EXPLICIT_SET_COUNT_AND_LOAD"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "How many reps in each set? Send one count for each set, such as 7 7 6.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "CLARIFIED",
+        "schemaValidated": true,
+        "aiActionType": "DRAFT_SETS",
+        "clarificationReason": "MISSING_REPS",
+        "pendingActionType": "SET_DRAFT",
+        "responseCategory": "PENDING_QUESTION",
+        "finalAction": "DRAFT_SETS"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "pending-semantic-1",
+      "group": "pending-semantic",
+      "message": "okay just this time",
+      "expected": "existing replacement scope SESSION_ONLY",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [
+        {
+          "kind": "REPLACE",
+          "slot": "SCOPE",
+          "scope": "AMBIGUOUS",
+          "source": "0dfc90f5-a3af-4290-ae0b-92fcf5d15f7a",
+          "replacement": "3669e409-1794-4403-92f1-641c8afc9571"
+        }
+      ],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_5fc9ccc1e2edff841617c9fb",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Cable Fly",
+              "Lateral Raise",
+              "Shoulder Press",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": "Today only or update your routine?",
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": "REPLACE",
+            "pendingOperation": {
+              "type": "REPLACE_EXERCISE",
+              "sourceExercise": "Barbell Bench Press",
+              "replacementExercise": "Cable Fly",
+              "scope": "AMBIGUOUS",
+              "awaiting": "SCOPE"
+            },
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "REPLACE_EXERCISE",
+              "fromExerciseRef": "Barbell Bench Press",
+              "toExerciseRef": "Cable Fly",
+              "scope": "SESSION_ONLY"
+            },
+            "confidence": "high",
+            "requiresClarification": false,
+            "rationaleCodes": [
+              "PENDING_OPERATION_RESOLVED"
+            ],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Change today only applied.\nCable Fly - 3 sets, 8-10 reps\nNo earlier sets recorded for this exercise yet.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "APPLIED",
+        "schemaValidated": true,
+        "aiActionType": "REPLACE_EXERCISE",
+        "resolvedIntent": "REPLACE_EXERCISE",
+        "responseCategory": "DOMAIN_RESULT",
+        "finalAction": "REPLACE_EXERCISE"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "CORRECT",
+      "violations": [],
+      "mutation": true,
+      "outcomeCorrect": true
+    }
+  ],
+  "failureResults": [
+    {
+      "id": "fault-timeout",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_6e4ff3186c19a14f10ed5ff4",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Cable Fly",
+              "Shoulder Press",
+              "Incline Press",
+              "Lateral Raise",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "error": "AI_PROVIDER_TIMEOUT",
+          "validated": false
+        }
+      ],
+      "localValidation": "AI_PROVIDER_TIMEOUT",
+      "response": "I didn't quite get that. You're on Barbell Bench Press. Send a set like 45kg 8, say NEXT, change the exercise, or say DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "AI_FAILED",
+        "schemaValidated": false,
+        "responseCategory": "RECOVERY"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "PROVIDER_FAILURE",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "fault-malformed",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_b9e9a12c523aa76ef8363b8d",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Lateral Raise",
+              "Incline Press",
+              "Shoulder Press",
+              "Cable Fly",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "error": "AI_SCHEMA_INVALID",
+          "validated": false
+        }
+      ],
+      "localValidation": "AI_SCHEMA_INVALID",
+      "response": "I didn't quite get that. You're on Barbell Bench Press. Send a set like 45kg 8, say NEXT, change the exercise, or say DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "AI_FAILED",
+        "schemaValidated": false,
+        "responseCategory": "RECOVERY"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "LOCALLY_REJECTED",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "fault-invalid-action",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_fa167e57463645e203495f91",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Lateral Raise",
+              "Shoulder Press",
+              "Cable Fly",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "DELETE_ACCOUNT"
+            },
+            "confidence": "low",
+            "requiresClarification": false,
+            "rationaleCodes": [],
+            "forbiddenDirectMutation": true
+          },
+          "validated": false,
+          "error": "AI_SCHEMA_INVALID"
+        }
+      ],
+      "localValidation": "AI_SCHEMA_INVALID",
+      "response": "I didn't quite get that. You're on Barbell Bench Press. Send a set like 45kg 8, say NEXT, change the exercise, or say DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "AI_FAILED",
+        "schemaValidated": false,
+        "responseCategory": "RECOVERY"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "LOCALLY_REJECTED",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "fault-false-safety",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_39fd588ef1dabd135c52d358",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Shoulder Press",
+              "Cable Fly",
+              "Lateral Raise",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "DELETE_SET"
+            },
+            "confidence": "low",
+            "requiresClarification": false,
+            "rationaleCodes": [],
+            "forbiddenDirectMutation": false
+          },
+          "validated": false,
+          "error": "AI_SCHEMA_INVALID"
+        }
+      ],
+      "localValidation": "AI_SCHEMA_INVALID",
+      "response": "I didn't quite get that. You're on Barbell Bench Press. Send a set like 45kg 8, say NEXT, change the exercise, or say DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "AI_FAILED",
+        "schemaValidated": false,
+        "responseCategory": "RECOVERY"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "LOCALLY_REJECTED",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "fault-low-confidence",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_ae0a0cd931a51b54fa2a1800",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Incline Press",
+              "Lateral Raise",
+              "Cable Fly",
+              "Shoulder Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "proposal": {
+            "schemaVersion": "workout-action.v1",
+            "action": {
+              "type": "DELETE_SET"
+            },
+            "confidence": "low",
+            "requiresClarification": false,
+            "rationaleCodes": [],
+            "forbiddenDirectMutation": true
+          },
+          "validated": true
+        }
+      ],
+      "localValidation": "PASS",
+      "response": "Which exercise or change do you mean? You can also say START, log a set, or ask about your plan.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "CLARIFIED",
+        "schemaValidated": true,
+        "aiActionType": "DELETE_SET",
+        "clarificationReason": "AI_AMBIGUITY",
+        "responseCategory": "PENDING_QUESTION",
+        "finalAction": "DELETE_SET"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "INCORRECT",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "fault-429",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_9d71886bf7f40b85670dac31",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Lateral Raise",
+              "Shoulder Press",
+              "Cable Fly",
+              "Incline Press",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "error": "AI_RATE_LIMIT",
+          "validated": false
+        }
+      ],
+      "localValidation": "AI_RATE_LIMIT",
+      "response": "I didn't quite get that. You're on Barbell Bench Press. Send a set like 45kg 8, say NEXT, change the exercise, or say DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "AI_FAILED",
+        "schemaValidated": false,
+        "responseCategory": "RECOVERY"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "PROVIDER_FAILURE",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    },
+    {
+      "id": "fault-5xx",
+      "group": "injected-failure",
+      "message": "could you adjust this movement somehow please",
+      "expected": "safe recovery, no mutation",
+      "mode": "WORKOUT_ACTIVE",
+      "pending": [],
+      "aiInvoked": true,
+      "capture": [
+        {
+          "context": {
+            "userId": "user_0a92a9580fb36040f77f84f7",
+            "activeWorkout": true,
+            "activeExercise": "Barbell Bench Press",
+            "knownExerciseRefs": [
+              "Lateral Raise",
+              "Incline Press",
+              "Shoulder Press",
+              "Cable Fly",
+              "Barbell Bench Press",
+              "Lat Pulldown",
+              "Leg Extension"
+            ],
+            "confirmedAliases": [
+              {
+                "alias": "lateral raises",
+                "exerciseRef": "Lateral Raise"
+              },
+              {
+                "alias": "incline press",
+                "exerciseRef": "Incline Press"
+              },
+              {
+                "alias": "shoulders",
+                "exerciseRef": "Shoulder Press"
+              },
+              {
+                "alias": "flys",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "cable",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "fly",
+                "exerciseRef": "Cable Fly"
+              },
+              {
+                "alias": "bench",
+                "exerciseRef": "Barbell Bench Press"
+              }
+            ],
+            "previousSet": {
+              "loadValue": 50,
+              "reps": 10,
+              "weightUnit": "KG",
+              "loadSemantics": "TOTAL_LOAD"
+            },
+            "activeLoadSemantics": "TOTAL_LOAD",
+            "preferredWeightUnit": "KG",
+            "pendingQuestion": null,
+            "workoutContext": {
+              "name": "Push",
+              "status": "ACTIVE",
+              "exercises": [
+                {
+                  "name": "Barbell Bench Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Cable Fly",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Shoulder Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Lateral Raise",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                },
+                {
+                  "name": "Incline Press",
+                  "plannedSets": 3,
+                  "repsMin": 8,
+                  "repsMax": 10
+                }
+              ]
+            },
+            "recentReferencedExercise": "Barbell Bench Press",
+            "recentReferencedSet": {
+              "exercise": "Barbell Bench Press",
+              "index": 2,
+              "loadValue": 50,
+              "reps": 10
+            },
+            "conversationMode": "WORKOUT_ACTIVE",
+            "pendingAction": null,
+            "allowedActionTypes": [
+              "GREETING",
+              "HELP",
+              "REPEAT",
+              "CONTINUE",
+              "CANCEL_PENDING_OPERATION",
+              "QUERY_PLAN",
+              "QUERY_CURRENT_STATE",
+              "COACHING_BOUNDARY",
+              "ANSWER_PENDING_QUESTION",
+              "DRAFT_SETS",
+              "NEXT_EXERCISE",
+              "PREVIOUS_EXERCISE",
+              "REORDER_EXERCISE",
+              "START_WORKOUT",
+              "RESUME_WORKOUT",
+              "CORRECT_SET",
+              "DELETE_SET",
+              "CHANGE_ACTIVE_EXERCISE",
+              "REPLACE_EXERCISE",
+              "ADD_EXERCISE",
+              "SKIP_EXERCISE",
+              "CHANGE_SESSION",
+              "CREATE_CUSTOM_EXERCISE",
+              "MAP_EXERCISE_ALIAS",
+              "UPDATE_ROUTINE_REQUEST",
+              "QUERY_HISTORY",
+              "QUERY_ANALYTICS",
+              "FINISH_WORKOUT",
+              "UNKNOWN",
+              "LOG_SET",
+              "LOG_MULTIPLE_SETS"
+            ]
+          },
+          "error": "AI_PROVIDER_HTTP_ERROR",
+          "httpStatus": 503,
+          "validated": false
+        }
+      ],
+      "localValidation": "AI_PROVIDER_HTTP_ERROR",
+      "response": "I didn't quite get that. You're on Barbell Bench Press. Send a set like 45kg 8, say NEXT, change the exercise, or say DONE.",
+      "route": {
+        "event": "conversation_route",
+        "conversationMode": "WORKOUT_ACTIVE",
+        "routeStage": "AI",
+        "aiInvoked": true,
+        "confirmationRequired": false,
+        "executionResult": "AI_FAILED",
+        "schemaValidated": false,
+        "responseCategory": "RECOVERY"
+      },
+      "clarification": true,
+      "confirmation": false,
+      "classification": "PROVIDER_FAILURE",
+      "violations": [],
+      "mutation": false,
+      "outcomeCorrect": true
+    }
+  ]
+}

@@ -1,10 +1,22 @@
 # Implementation Plan: WhatsApp Workout Companion
 
+## Conversational reliability hardening (2026-10-09)
+
+The current user request authorizes the language-understanding audit and core hardening in [conversational-reliability.md](conversational-reliability.md). Language quality, execution safety and provider availability are measured separately. AI bypass is diagnostic, not an acceptance target. Existing deterministic ownership, confirmation, transactions and delivery boundaries remain authoritative. Partial drafts and contextual semantic actions extend the existing in-process orchestrator and JSON state; there is no new service or fitness capability. This extension is not declared complete without the requested realistic acceptance evidence.
+
+## Approved Conversation Extension (2026-10-08)
+
+The user's domain conversational robustness request is implemented as a domain `ConversationOrchestrator`, typed state/grammar/reference/response modules and a PostgreSQL application adapter. This is an in-process extension of the approved modular monolith, not another interpreter service, agent, queue or transport. See [conversation-orchestration.md](conversation-orchestration.md). T130-T135 trace the extension; existing release/privacy decisions remain unchanged.
+
 **Branch**: `001-whatsapp-workout-companion` | **Date**: 2026-10-06 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-whatsapp-workout-companion/spec.md`
 
 ## Summary
+
+Ownership verification extension (2026-10-08): [whatsapp-ownership-verification.md](whatsapp-ownership-verification.md) binds existing link challenges to an explicitly consented claimed number, then trusts only the matching authenticated Meta sender. Migration 0009 preserves proven links and invalidates unbound pending tokens. Existing provider-private recipient encryption, owner transactions, outbound intent delivery and idempotency are reused; no Phase C policy or new infrastructure.
+
+Phase B transport decision (2026-10-08): Meta Cloud API implementation uses provider-independent MessagingTransport, encrypted provider-boundary recipient resolution, durable bounded attempts and minimal authenticated receipts. Legacy false SENT and unknown delivery cannot automatically replay. See [phase-b-transport.md](phase-b-transport.md) and migration 0008; deployment/privacy approval remains external, no Phase C policy or new infrastructure.
 
 Build a WhatsApp-first workout companion with a web product for account setup, routine configuration, history, analytics, edits, export, and deletion. Use an end-to-end TypeScript monorepo so web, API, WhatsApp, AI interpretation, persistence, analytics, and evaluations share one provider-independent workout domain model.
 
@@ -14,7 +26,7 @@ The architecture centers on deterministic domain commands. WhatsApp and web inpu
 
 **Language/Version**: TypeScript 5.x on Node.js LTS 22.x. Strict TypeScript across apps and packages.
 
-**Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Prisma or Drizzle for typed relational access, Zod for contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, OpenAI Responses API or equivalent provider behind an AI adapter with strict structured output support, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
+**Primary Dependencies**: Next.js app for web and API routes/server actions, React for web UI, PostgreSQL, Drizzle for typed relational access, Zod-style local contracts and runtime validation, official Meta WhatsApp Cloud API over HTTPS behind a messaging adapter, Gemini Developer API free tier behind a provider-independent structured JSON output adapter, Vitest, Playwright, and an evaluation runner based on versioned JSONL/YAML cases.
 
 **Storage**: PostgreSQL. Relational constraints are required for user ownership, one active workout per user, historical session snapshots, routine sequence cursors, idempotency records, corrections, aliases, analytics queries, exports, and deletion requests. MVP PRs are derived from valid set records rather than stored in a cache/table.
 
@@ -269,7 +281,7 @@ Keep provider behind:
 - `PromptRegistry`
 - `AiEvaluationRunner`
 
-Recommend an AI provider/model with strict structured output support, low-latency small-model options, stable SDK support for TypeScript, cost controls, and regression-evaluation ergonomics. OpenAI Responses API with strict structured outputs is the initial recommendation because it supports JSON-schema-shaped outputs and TypeScript SDK workflows, but domain code must only depend on local action schemas.
+Use Gemini Developer API free tier as the initial MVP structured-output provider behind the provider-independent `StructuredOutputClient` adapter. Configure `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, and `AI_MODEL=gemini-3.5-flash-lite` (the default). Use an unbilled free-tier project; quotas and eligibility depend on the account. The REST adapter requests JSON-schema-shaped output, normalizes provider failures into local error types, and leaves final validation to the existing Zod action schemas. Normal tests use the mock client; live Gemini smoke/evals are opt-in. No automatic paid-provider fallback is allowed. OpenAI remains an optional future provider, with its existing adapter retained but not selected by the MVP runtime factory. Domain code must only depend on local action schemas.
 
 Prompts, schemas, fixtures, and evaluation cases are version-controlled. AI output is validated with local schemas before domain validation.
 
@@ -412,7 +424,7 @@ No constitution violations are known.
 ## Unresolved Technical Decisions
 
 - Exact TypeScript package manager and workspace tool: pnpm is recommended, but no package manager exists in the repo yet.
-- Prisma versus Drizzle: both fit; choose during implementation based on team preference for migration ergonomics and query complexity.
+- Typed relational access: Drizzle selected during the first deterministic vertical-slice implementation for SQL-first migrations, partial-index ergonomics, and lightweight TypeScript integration.
 - Web authentication provider: must support secure sessions and account linking; exact library/provider remains open.
 - Production hosting provider and secret manager remain open.
 - AI provider/model and fallback policy remain open until cost, latency, and eval performance are measured.
@@ -422,3 +434,5 @@ No constitution violations are known.
 ## Complexity Tracking
 
 No constitution violations require complexity justification.
+
+Closure implementation reuses the existing orchestrator/ports/store. Persistence records typed outcome category/effect from owned state changes and confirmation evidence; the planner formats it for WhatsApp. Authenticated transcripts use a local HTTP webhook server, real HMAC/ownership/database processing and controlled accepted outbound delivery. Gemini interpretation quality is evaluated separately with immutable v6/v7 same-corpus artifacts.

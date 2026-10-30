@@ -1,0 +1,8 @@
+import { defineConfig } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL required for ownership acceptance");
+const parsed = new URL(process.env.TEST_DATABASE_URL); parsed.searchParams.set("options", "-c search_path=ownership_web_test");
+export default defineConfig({ testDir: ".", testMatch: "*.spec.ts", workers: 1, timeout: 90000,
+  use: { baseURL: "http://127.0.0.1:3113" }, webServer: { cwd: fileURLToPath(new URL("../../../", import.meta.url)),
+    command: "node node_modules/next/dist/bin/next dev apps/web --webpack --hostname 127.0.0.1 --port 3113", url: "http://127.0.0.1:3113", timeout: 120000,
+    env: { DATABASE_URL: parsed.toString(), GEMINI_API_KEY: "offline-no-live-calls", AI_PROVIDER: "gemini", WHATSAPP_PROVIDER: "disabled", WHATSAPP_APP_SECRET: "ownership-web-secret", WHATSAPP_BUSINESS_NUMBER: "+15551234567", WHATSAPP_PHONE_NUMBER_ID: "123456", WHATSAPP_RECIPIENT_ENCRYPTION_KEY: "ab".repeat(32), APP_ORIGIN: "http://127.0.0.1:3113" } } });

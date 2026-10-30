@@ -1,0 +1,240 @@
+[
+  {
+    "id": "set-simple-45x10",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-029", "FR-030"],
+    "conversationContext": { "activeWorkout": true, "activeExercise": "Incline Dumbbell Press", "preferredWeightUnit": "KG" },
+    "userInput": "45x10",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadValue": 45, "set.weightUnit": "KG", "set.loadSemantics": "PER_HAND_PER_SIDE", "set.reps": 10 },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": ["inventsUnitWhenUnsafe", "changesActiveExercise"],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "PER_HAND_PER_SIDE", "reps": 10 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["SET_NOTATION"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-multiple",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-033"],
+    "conversationContext": { "activeWorkout": true, "activeExercise": "Bench", "preferredWeightUnit": "KG" },
+    "userInput": "45x10, 45x9, 45x8",
+    "expectedAction": { "type": "LOG_MULTIPLE_SETS" },
+    "expectedFields": { "sets.0.reps": 10, "sets.1.reps": 9, "sets.2.reps": 8 },
+    "expectedClarification": null,
+    "expectedConfirmationRequired": false,
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": {
+        "type": "LOG_MULTIPLE_SETS",
+        "sets": [
+          { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "UNSPECIFIED_DEFAULT", "reps": 10 },
+          { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "UNSPECIFIED_DEFAULT", "reps": 9 },
+          { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "UNSPECIFIED_DEFAULT", "reps": 8 }
+        ]
+      },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["MULTI_SET"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-omitted-unit-safe",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030a"],
+    "conversationContext": { "activeWorkout": true, "preferredWeightUnit": "LB" },
+    "userInput": "100x5",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.weightUnit": "LB" },
+    "expectedConfirmationRequired": false,
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 100, "weightUnit": "LB", "loadSemantics": "TOTAL_LOAD", "reps": 5 } },
+      "confidence": "medium",
+      "requiresClarification": false,
+      "rationaleCodes": ["PREFERRED_UNIT_FALLBACK"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-explicit-kg",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030b"],
+    "conversationContext": { "activeWorkout": true, "preferredWeightUnit": "LB" },
+    "userInput": "45 kg x 10",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.weightUnit": "KG" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "UNSPECIFIED_DEFAULT", "reps": 10 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["EXPLICIT_UNIT"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-explicit-lb",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030b"],
+    "conversationContext": { "activeWorkout": true, "preferredWeightUnit": "KG" },
+    "userInput": "45 lb x 10",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.weightUnit": "LB" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 45, "weightUnit": "LB", "loadSemantics": "PER_HAND_PER_SIDE", "reps": 10 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["EXPLICIT_UNIT"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-per-hand-each",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030d"],
+    "conversationContext": { "activeWorkout": true },
+    "userInput": "45 each 10",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadSemantics": "PER_HAND_PER_SIDE" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "PER_HAND_PER_SIDE", "reps": 10 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["PER_HAND_PER_SIDE"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-total-load",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030e"],
+    "conversationContext": { "activeWorkout": true, "activeExercise": "Barbell Squat" },
+    "userInput": "100 kg total for 5",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadSemantics": "TOTAL_LOAD" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 100, "weightUnit": "KG", "loadSemantics": "TOTAL_LOAD", "reps": 5 } },
+      "confidence": "medium",
+      "requiresClarification": false,
+      "rationaleCodes": ["TOTAL_LOAD"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-machine-stack",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030f"],
+    "conversationContext": { "activeWorkout": true, "activeExercise": "Cable Row" },
+    "userInput": "stack 60 x 12",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadSemantics": "MACHINE_STACK" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 60, "weightUnit": "KG", "loadSemantics": "MACHINE_STACK", "reps": 12 } },
+      "confidence": "medium",
+      "requiresClarification": false,
+      "rationaleCodes": ["MACHINE_STACK"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-unspecified-default-valid",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030g"],
+    "conversationContext": { "activeWorkout": true, "activeExercise": "Squat", "preferredWeightUnit": "KG" },
+    "userInput": "80x5",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadSemantics": "UNSPECIFIED_DEFAULT" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 80, "weightUnit": "KG", "loadSemantics": "UNSPECIFIED_DEFAULT", "reps": 5 } },
+      "confidence": "medium",
+      "requiresClarification": false,
+      "rationaleCodes": ["UNSPECIFIED_DEFAULT"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-no-per-side-total-conversion",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030d"],
+    "conversationContext": { "activeWorkout": true },
+    "userInput": "45 each 10",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadValue": 45, "set.loadSemantics": "PER_HAND_PER_SIDE" },
+    "forbiddenOutcomes": ["convertedPerSideToTotal"],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "PER_HAND_PER_SIDE", "reps": 10 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["NO_CONVERSION"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-valid-same",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-032"],
+    "conversationContext": { "activeWorkout": true, "previousSet": { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "PER_HAND_PER_SIDE" } },
+    "userInput": "same x 9",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.loadValue": 45, "set.reps": 9, "set.loadSemantics": "PER_HAND_PER_SIDE" },
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "loadValue": 45, "weightUnit": "KG", "loadSemantics": "PER_HAND_PER_SIDE", "reps": 9 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["SAME_FROM_CONTEXT"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-ambiguous-same",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-032"],
+    "conversationContext": { "activeWorkout": true },
+    "userInput": "same x 9",
+    "expectedAction": { "type": "UNKNOWN" },
+    "expectedClarification": "Which previous set should I copy?",
+    "expectedConfirmationRequired": false,
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "UNKNOWN", "reason": "Cannot resolve same without a previous compatible set." },
+      "confidence": "high",
+      "requiresClarification": true,
+      "clarificationQuestion": "Which previous set should I copy?",
+      "rationaleCodes": ["AMBIGUOUS_SAME"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "set-missing-numeric-values",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-030"],
+    "conversationContext": { "activeWorkout": true },
+    "userInput": "bench felt heavy",
+    "expectedAction": { "type": "UNKNOWN" },
+    "expectedClarification": "What load and reps should I log?",
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "UNKNOWN", "reason": "Missing required numeric load or reps." },
+      "confidence": "medium",
+      "requiresClarification": true,
+      "clarificationQuestion": "What load and reps should I log?",
+      "rationaleCodes": ["MISSING_NUMERIC_VALUES"],
+      "forbiddenDirectMutation": true
+    }
+  }
+]

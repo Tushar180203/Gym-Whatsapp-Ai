@@ -1,5 +1,28 @@
 # Technical Research: WhatsApp Workout Companion
 
+## Typed Conversation Continuations (2026-10-08)
+
+Decision: one owner-scoped JSONB conversation row, locally Zod-validated, with at most three typed frames, ten-minute logical validity and optimistic version checking inside the existing advisory-locked command transaction. Reuse pending confirmations and domain commands rather than introduce model-owned memory or another confirmation mechanism. Reason: interrupted/nested questions require a durable parent intent; reconstructing it from prior message text is unreliable and expands sensitive chat retention.
+
+Exact current-session identity/confirmed aliases precede bounded typo matching (at most two edits, with a two-edit uniqueness margin). Similar identities never merge. Global factual history continues to require exact confirmed identity resolution. Older authenticated timestamps cannot replace newer state; provider second precision cannot order ties, which remain serialized by the existing owner lock. Gemini keeps its configurable provider interface and unchanged local action schema; prompt v5 receives bounded structured conversation context only.
+
+## Number Ownership Decision (2026-10-08)
+
+Use existing AccountLinkToken/WhatsAppIdentityLink rather than a parallel OTP/identity system. A website number is CLAIMED until an authenticated Meta sender with matching SHA-256 normalized digits consumes a hashed, 128-bit, ten-minute challenge. libphonenumber-js performs international parsing and possible-number validation with no default country; verification, not syntactic validation, proves the account. Only masked display and expected hash persist before proof. Final sender address uses the existing AES-256-GCM transaction boundary. Production verification cannot commit without that writer. Existing proven links remain; legacy unbound outstanding tokens are invalidated. Verified-link-version references prevent old replies following a disconnected identity. Product consent is a timestamp, not a marketing/legal promise. Welcome reuses the logical LINK reply; plan-ready reuses durable outbound intent/delivery per link/routine/version with the existing service window and no worker. Exact rules and acceptance evidence are in [whatsapp-ownership-verification.md](whatsapp-ownership-verification.md).
+
+## Phase B Transport Decisions (2026-10-08)
+
+Meta Cloud API is implemented behind MessagingTransport and a provider-private encrypted recipient resolver. Identity hashes remain internal, never deliverable addressing. AES-256-GCM uses a dedicated configured 32-byte key and identity-bound authentication; no domain/AI/export recipient field. Durable SENDING reservation, bounded request/manual retry and signed receipt metadata preserve one logical response. Ambiguous acceptance and legacy false SENT are quarantined rather than blindly replayed; correlation is not provider-side idempotency. Migration 0008 and the exact configuration/operation/live acceptance boundary are documented in [phase-b-transport.md](phase-b-transport.md). No queue/worker, new feature or Phase C policy was introduced.
+
+## Phase A Implementation Decisions (2026-10-07)
+
+- Configuration uses the existing PostgreSQL application and checked-out, owner-locked client transaction. Legacy routine fixture creation now also keeps BEGIN/statements/COMMIT on one client; it is not the onboarding acceptance path.
+- Approved UserProfile displayName is retained, persisted and returned. Unknown request/owner fields are rejected, not silently ignored.
+- Planned-day/frequency metadata is separate from the explicit cursor. Template edits preserve historical references/snapshots; migration 0007 adds archive metadata and deferred position uniqueness for atomic reorder.
+- A small shared known-identity catalog uses explicit load defaults, not guessed muscle classifications. Custom creation/aliases and sequence reorder reuse US4 confirmation authority; no second confirmation service or provider-specific domain types.
+- Runtime starts are proposals; only explicit acceptance activates them. Alternatives remain off-sequence, rest leaves the cursor unchanged, and replacement captures active/target routine/cursor versions before confirmation. Fixture-only helpers remain for lower-level tests.
+- Phase B transport and Phase C privacy/hosting remain deferred. No recipient storage, delivery, retention commitment or additional architecture.
+
 **Feature**: [spec.md](./spec.md)  
 **Date**: 2026-10-06
 
@@ -32,6 +55,23 @@
 - Raw SQL only: rejected for MVP because shared typed access reduces accidental schema drift.
 - Full repository abstraction everywhere: rejected as a default. Use focused repositories/query services where they protect domain boundaries.
 
+### Implementation Decision: npm Workspaces And Drizzle
+
+**Decision**: Use npm workspaces for the monorepo and Drizzle for typed PostgreSQL access.
+
+**Rationale**: npm is already available in the target Node environment and keeps the first vertical slice lightweight. Drizzle fits the SQL-first persistence model, partial unique index needs, migration reviewability, and TypeScript ergonomics without requiring a generated client during early slice work.
+
+**Vertical-slice note**: The first deterministic slice includes a reviewed SQL migration and an in-memory repository implementation for automated tests in this environment. The repository boundary is intentionally shaped around the PostgreSQL/Drizzle schema so the slice can run without a live database while preserving the approved relational constraints for production wiring.
+
+## Decision: Use First-Party Secure Session Auth For The Vertical Slice
+
+**Rationale**: The first deterministic slice needs real authenticated user context, secure session tokens, logout/session invalidation, and ownership checks before provider identity linking can be trusted. A first-party session service using high-entropy bearer tokens, hashed session storage, password hashing, expiry, invalidation, and owner guards satisfies the slice without coupling the domain to a hosted auth provider.
+
+**Alternatives considered**:
+
+- Mock auth: rejected because the vertical slice must prove real ownership and cross-user isolation.
+- External hosted auth provider: deferred until deployment/provider requirements are finalized; the session boundary can later be backed by a provider without changing domain ownership rules.
+
 ## Decision: Use Official WhatsApp Business Platform / Cloud API Behind A Messaging Interface
 
 **Rationale**: Direct Cloud API integration avoids unnecessary aggregator coupling for MVP and supports official webhook and outbound-message flows. The messaging adapter owns provider verification, provider payload formats, outbound message constraints, service-window/template behavior, and provider errors. Domain code sees normalized messages and outbound response intents only.
@@ -61,14 +101,49 @@
 
 ## Decision: Recommend Strict Structured Output Support For Initial AI Provider
 
-**Rationale**: The implementation needs JSON-schema-shaped action outputs, validation, versioned schemas, and regression tests. OpenAI Responses API with structured outputs is a suitable initial provider candidate because its docs describe strict schema outputs for application workflows. The provider remains behind a local interface so the domain does not depend on OpenAI response formats.
+**Rationale**: The implementation needs JSON-schema-shaped action outputs, local validation, versioned schemas, and regression tests. Gemini Developer API supports structured JSON output and is the initial free-tier MVP provider. The provider remains behind a local interface so the domain does not depend on Gemini response formats. Provider schema subsets never replace the complete local Zod contract.
 
 **Alternatives considered**:
 
 - Provider-neutral text-only completions: rejected because the action contract needs structured outputs.
 - Local model only: not chosen for MVP because reliability, latency, and operational effort are unknown.
 
+## Decision: Initial MVP AI Adapter Uses Gemini Developer API Free Tier
+
+**Rationale**: Gemini Developer API is the initial MVP provider because development must use a free AI option. Google's pricing lists free input/output for `gemini-3.5-flash-lite`, and its model documentation supports structured outputs for classification/extraction. Configure `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, and `AI_MODEL` (default `gemini-3.5-flash-lite`). The REST adapter remains behind `StructuredOutputClient`; `IntentInterpreter` and workout domain types remain provider-independent. All output is validated against existing local Zod schemas after provider JSON decoding. Gemini's supported schema subset omits unsupported constraints (including boolean literals), which remain enforced locally. Normal tests/evals use mocks; live Gemini smoke tests remain explicitly opt-in. Offline evals establish boundary behavior, not live model accuracy.
+
+**Free-tier constraints**: Use an unbilled free-tier project; model selection alone cannot guarantee the billing tier. Free-tier quotas/availability are account-dependent, and quota failures surface as local rate-limit errors with no paid fallback. Google's free-tier pricing states data may be used to improve its products; use synthetic/non-sensitive data for development and review those terms before sending real user workout/chat data. API keys and raw provider errors are never included in routine logs.
+
+**Model availability**: Google's current model page limits Gemini 2.5 access to existing users and directs new projects to newer models. The default therefore uses the stable, free-tier-compatible `gemini-3.5-flash-lite`. Explicit `AI_MODEL` overrides remain available for account-specific supported models; runtime does not automatically change models on quota or access errors.
+
+**Verified transport compatibility**: Live synthetic probes confirmed that this
+Gemini endpoint accepts `generationConfig.responseMimeType=application/json` and
+`generationConfig.responseSchema`, but rejects `application/json` under
+`responseFormat.text.mimeType`. Its native Schema rejects `additionalProperties`.
+Removing that keyword allowed every reduction phase through all 18 action variants
+to succeed; the action union and nullable `anyOf` branches need no flattening.
+Local Zod strictness remains unchanged. Prompt `intent-interpreter.prompt.v2`
+explicitly requires `forbiddenDirectMutation=true`; a false value is still
+rejected locally. Sanitized evidence and reproducible commands are in
+`packages/evals/diagnostics/README.md`.
+
+**Alternatives considered**:
+
+- OpenAI Responses API: optional future provider rather than the required initial provider. Its existing adapter remains isolated and available for a future explicit selection; the MVP runtime does not select it or fall back to it.
+- Hard-code a premium frontier model: rejected for MVP cost/latency until eval evidence requires it.
+- Leave only mocks: rejected because the product needs a real production adapter, even though real-provider smoke tests stay opt-in.
+- Provider-specific domain types: rejected by the provider-independence principle.
+
 ## Decision: Version Prompts, Schemas, And Eval Cases
+
+### US4 Delivery Decision (2026-10-07)
+
+- Reuse the existing PostgreSQL inbound transaction and per-user advisory lock for corrections, session mutations, pending confirmations and audit writes. No queue, worker, event store or new agent.
+- Migration `0002_us4.sql` adds correction audits, confirmed aliases, expiring pending confirmations, optimistic routine/identity versions, durable response recovery and scope-clarification state. Added exercises have nullable planning targets rather than invented set counts or rep targets.
+- Confirmed exercise-template edits affect future snapshots only. Removed planned exercises remain as flagged rows because existing workout snapshots retain their source references.
+- The previously implemented route files were callable functions rather than HTTP handlers. T101 instantiates the already-approved Next.js/React stack and converts those transport wrappers to Request/Response handlers, with HttpOnly session cookies and same-origin mutation checks. This does not change workout domain behavior or add a new architecture.
+- Prompt `intent-interpreter.prompt.v3` adds US4 target-reference, alias, numeric-data and scope guidance. The action envelope schema remains `workout-action.v1`; local Zod validation and deterministic authorization/confirmation remain authoritative. Twelve US4 fixtures run offline with mocks; this is not evidence of live Gemini language accuracy.
+- This pass supports permanent exercise add/remove/replace/reorder operations. Routine session-template add/remove/replace/reorder and `CHANGE_SESSION` execution are outside the user's enumerated US4 pass and return clarification/unsupported responses, not mutations.
 
 **Rationale**: Intent interpretation, alias handling, and destructive-action safety are core product risks. AI behavior changes must be regression-testable. Versioned prompt/schema/eval artifacts make changes reviewable and traceable.
 
@@ -131,14 +206,42 @@
 
 ## Open Technical Questions
 
+### Release Hardening Decisions (2026-10-07)
+
+- T124-T129 review found incomplete approved setup/transport paths; these remain release blockers rather than being expanded during hardening. See traceability-review.md.
+- Use bounded process-local pilot limits with hashed identity/session keys; no queues or distributed limiter. Auth entry is conservatively shared until hosting defines a trusted proxy/IP boundary. Production edge controls remain a deployment decision.
+- Keep explicit allowlisted event fields, no raw user/provider payloads or credential values. Configuration validation reports variable names only; npm start requires production HTTPS APP_ORIGIN.
+- Add migration 0006 only for existing owner/parent/cursor/set invariants and current-query indexes. Preserve earlier migrations and all current valid data; mismatched legacy rows fail migration for operator review. Identity consistency is checked at commit to support already-approved confirmed merges.
+- Persist outbound results as PENDING, not falsely SENT. Real transport remains absent. Existing falsely SENT records require manual reconciliation before delivery is enabled.
+- Declare the already-installed tsx runner as a direct development dependency for an explicit db:migrate command. No persistence or hosting architecture change.
+- Review privacy/erasure/retention and external provider processing before production; soft deletion is not physical or backup erasure. Development dependency audit needs a reviewed major-version remediation, not force fixes.
+
+### US7 Implementation Decisions (2026-10-07)
+
+- Use the approved synchronous small-account data-control path: one durable request table with owner/key uniqueness, one pending deletion per user and per-user PostgreSQL transaction locks. No queue, worker, additional agent or new service was needed.
+- Export `workout-export.v1` is a portable JSON snapshot assembled from explicit owner-scoped categories/field allowlists. Include owned custom identities and only referenced shared definitions. Omit credentials, provider identity hashes, raw tokens/chat payloads and operational command records, including secret-bearing keys in nested snapshots.
+- Workout-data deletion covers recorded sessions, session exercises, sets and associated correction/history access; configuration remains available for future workouts. The existing `DISCARDED` lifecycle and deleted set state are retained. A storage-only `data_deleted_at` marker prevents exporting removed records while preserving ordinary discarded-session metadata. Account deletion additionally blocks sessions/links and records the existing user tombstone. This implements inaccessibility/soft deletion, not a physical-purge, backup-removal or retention guarantee. Release privacy/retention commitments remain open.
+- Deletion requires an authenticated owner, explicit confirmation, ten-minute expiry and a target-data fingerprint. Stale targets require a new request. Completed owner requests reuse their safe terminal result; the original unexpired session credential is accepted only for its exact completed account-deletion receipt after invalidation, never for execution or data access.
+- Revoking old export snapshots and advancing a user data-generation marker prevents old provider delivery replays from returning removed workout facts or reapplying them to a new workout. This uses the existing inbound transaction/idempotency lifecycle, not a new event or queue architecture.
+
+### US6 Implementation Decisions (2026-10-07)
+
+- Analytics remain on-demand deterministic queries, not persisted aggregates. Read-only repeatable-read PostgreSQL snapshots keep each web result internally consistent; inbound queries run inside the existing user-serialized messaging transaction.
+- Periods use UTC Monday-start weeks and calendar months because the current profile has no timezone preference. Training dates use session start time (creation time for legacy missing starts), not set correction timestamps. Completed counts/frequency exclude incomplete, active and discarded sessions. Recorded sets from completed/incomplete sessions contribute progression and confirmed primary-muscle counts.
+- `0004_us6.sql` supplies the approved classification dependency with user-private overrides for accessible exercise identities, including shared catalog identities. Classification is explicit manual input through the already contracted PATCH route; no automatic muscle inference, secondary/fractional volume, coaching or classification agent was introduced.
+- Bounded history answers reuse US5 exact identity/confirmed alias and compatible preferred-unit/load-semantic services. Gemini only proposes query kind/subject through the existing locally validated envelope. Prompt v4 prohibits factual numeric answers; deterministic question notation and coaching limitations bypass the provider.
+
 - Choose Prisma or Drizzle after implementation preferences are known.
 - Choose the auth library/provider after deployment and account requirements are known.
 - Choose hosting and secret management before production.
-- Measure candidate AI models against eval cases before finalizing model selection.
+- Measure candidate AI models against eval cases before changing the default model selection.
 - Define production privacy, retention, third-party processing, and model-training commitments before release.
 
 ## External References Consulted
 
 - [OpenAI Structured Outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), for the provider recommendation criteria around strict schema-shaped outputs.
+- [Gemini Developer API pricing](https://ai.google.dev/gemini-api/docs/pricing), for the initial free-tier choice and data-handling terms.
+- [Gemini 3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite), for classification/extraction and structured output support.
+- [Gemini GenerateContent structured output](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), for the REST structured JSON adapter.
 - [Meta-hosted WhatsApp Cloud API webhook SDK reference](https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/webhooks/start/), for webhook verification and signature-boundary planning.
 - [WhatsApp Business Platform policy](https://whatsappbusiness.com/policy/?faq=5), for the service-window/template constraint that belongs at the messaging boundary.

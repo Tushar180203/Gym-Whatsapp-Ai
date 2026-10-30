@@ -1,0 +1,67 @@
+# Conversational reliability results — 2026-10-09
+
+**Acceptance gate: FAIL. Conversational MVP quality acceptable: NO. Robust workout conversation layer complete: NO.**
+
+The implementation substantially improves the interpretation boundary, numeric evidence, partial drafts and pending-context handling. It does not yet implement or validate the entire requested conversational standard. Tasks T137, T138, T140 and T142 remain open. The latest supported-action live Gemini subset scored 8/9 (88.9%), below 95%; the subset is also too small to establish broad language quality. No live WhatsApp delivery was performed in these evaluations.
+
+## Requested 33-item report
+
+| # | Item | Result / evidence |
+|---|---|---|
+| 1 | Architectural root causes | Incomplete semantic action vocabulary; digit-only numeric evidence; premature pending-slot/lifecycle handling; conversational prefixes mistaken for exercise identities; broad coaching detection; insufficient recent/pending context; raw-string response/result coupling; mocked tests overstating language quality. Expanded Gemini array bounds also caused real HTTP 400 responses. See the architecture audit. |
+| 2 | Old routing architecture | Verified webhook → normalization/deduplication/link/owner lock → state → controls/grammar/pending/legacy handler → optional AI → schema/targets/confirmation → domain transaction → response strings → durable outbound/provider acceptance. Early handlers could prevent semantic interpretation. |
+| 3 | New routing architecture | Same authenticated transport → durable structured context → obvious syntax and explicit safe pending replies → contextual provider-independent semantic proposal → strict local schema → owned target/ambiguity/numeric/domain/confirmation/idempotency checks → existing transactional commands → contextual response categories → durable delivery. Some legacy handlers and raw response strings remain. |
+| 4 | Deterministic parser responsibility | Exact numeric shorthand, LINK/system commands, explicit confirmations and high-confidence lifecycle/control replies. Unresolved natural exercise-prefixed sets now reach AI rather than premature identity/lifecycle recovery. Existing phrase grammars have not all been retired. |
+| 5 | Gemini responsibility | Interpret meaning, references, scope and supplied values into typed proposals. No database facts inferred, SQL accepted, direct persistence access or arbitrary action sequences. Provider schema omits unsupported array bounds; full local bounds remain enforced. |
+| 6 | Conversation-state design | Persisted mode, workout/version, active exercise, proposal, recent reference context and typed stack; SET_DRAFT records explicit load/unit/count and exact session exercise. Preferred unit/load semantics come from saved context. Generic state redesign remains incomplete. |
+| 7 | Pending/continuation design | Bounded three-frame stack, ten-minute expiry and workout-version checks. Semantic answers fill expected slots; they cannot confirm protected operations. Existing custom-exercise child resumes replacement parent. Read interruptions retain parents; a valid replacement parent can survive a logged set. General continuations for every requested intent remain unfinished. |
+| 8 | Reference resolution | Model supplies references, not authoritative durable identifiers. Existing owner-scoped exact identities, confirmed aliases, set ordinals and local ambiguity resolution choose targets. Recent same-exercise set context is bounded; unsupported or ambiguous references clarify. Broad pronoun coverage is not proven. |
+| 9 | Natural set handling | Single/multiple semantic logs, same/again context and partial load/count drafts; numeric words and natural units checked through lexical evidence. Count ≤20; no fuzzy digit correction or missing-value invention. Final live natural-set cases 4/4; partial case 1/1. |
+| 10 | Interruptions | Saved-plan/current-state/history/analytics/social interruptions preserve tested pending operations and sessions. Partial draft survives factual interruption and repository restart. Full interruption matrix across every parent remains open. |
+| 11 | Corrections | Existing owned target/audit/confirmation policies retained; number-word evidence added. Corpus covers previous sets, moved exercises and correction cancellation. Low-confidence replacement proposals no longer retain guessed operands for later authorization. |
+| 12 | Factual/coaching separation | QUERY_PLAN and QUERY_CURRENT_STATE added; high-confidence weight/deload requests remain deterministic boundaries, ambiguous natural recommendations reach AI. `should` alone no longer establishes coaching. One live typo plan question still misroutes to current state. Prompt retains an older UNKNOWN coaching instruction alongside COACHING_BOUNDARY guidance; consolidation remains needed. |
+| 13 | Response-planner changes | Added response-category telemetry, contextual recovery, current persisted planned/logged facts, typed set responses and truthful already-active continuation wording. Full migration away from raw business strings and copy-derived execution status remains unfinished. |
+| 14 | Generic fallbacks removed | Premature pending/unknown-exercise recoveries no longer block selected semantic paths. Replaced active recovery and “No previous record.” copy; no false logged message for empty persistence results or false resumed message for an already active workout. Not every generic fallback in the codebase was removed. |
+| 15 | Corpus size | 391 executed inbound turns across PostgreSQL conversation fixtures, plus standalone regressions and provider-failure tests. Live corpus defines 69 cases; latest reports execute selected subsets rather than all 69. |
+| 16 | Multi-turn scenarios | 50 fixture conversations: 20 existing and 30 new scenario families covering the requested lifecycle, logging, interruption, correction, identity, restart, replay and failure topics. Each verifies durable state; semantic provider proposals are mocked. |
+| 17 | Real transcripts reproduced | Reported failure examples represented as regression inputs. **0 authenticated complete WhatsApp transcripts supplied/replayed.** Existing synthetic live baseline is not a real WhatsApp transcript dataset. |
+| 18 | Deterministic routing rate | Offline 391-turn corpus: 289/391 = 73.91%. Diagnostic only; not an acceptance objective. |
+| 19 | Gemini routing rate | Offline corpus: 102/391 = 26.09% mocked semantic calls. Latest live common subset: 9/9 real Gemini calls; security subset: 10/13. These are selected samples, not production traffic estimates. |
+| 20 | Live Gemini semantic accuracy | Supported subset **8/9 = 88.89%**. Security subset **9/10 = 90%**. Combined 17/19 = 89.47%, but the subsets used different prompt/context snapshots and this is descriptive only. Safe rejection is never credited as model accuracy. |
+| 21 | Overall conversation success | Offline mocked 391-turn acceptance assertions pass; this verifies execution/context, not real language understanding. Supported live end-to-end subset **8/9 = 88.89%**. Security outcomes safe 13/13 despite one wrong model intent. No broad real-provider 300-turn acceptance measurement. |
+| 22 | Clarification-safe rate | Latest live reports classify 0 model failures as clarification-safe; the one explicit ambiguity case safely clarified (1/1). All injected provider failures recovered without mutation. These small samples do not establish a general ambiguity rate. |
+| 23 | Unsafe mutation count | **0 observed** in latest live supported/security and injected-failure runs and passing offline safety assertions. Model injection misunderstanding remained gated by unfinished-work policy. Scope limited to tested cases. |
+| 24 | Hallucinated workout-value count | **0 observed** in latest persisted factual-value and invented-set checks. Factual formatting reads persistence; no general live factual-accuracy benchmark completed. |
+| 25 | Duplicate mutation count | **0 observed** in duplicate webhook, command replay, concurrent finish and transport regression assertions. |
+| 26 | Restart-context-loss count | **0 observed** in covered restart scenarios, including partial multi-set draft. Not every requested semantic parent has restart coverage. |
+| 27 | Failures by category | Latest supported live: AI_INTENT ×1 (`whts today workout` → current state). Latest security: AI_INTENT ×1 (injection → finish proposal, safely blocked from completion). Earlier iterations: PROVIDER schema HTTP400/transient503; AI_ENTITY_EXTRACTION extra fields; PENDING_STATE scope continuation and missing-reps draft errors. Latest subset no provider errors. Remaining context/response/taxonomy work is unvalidated, not counted as passing. |
+| 28 | Files changed | See inventory below. Existing user changes in package.json, persistence/conversation.ts, PostgreSQL conversation tests and pre-existing untracked live-eval artifacts were retained/extended. |
+| 29 | Migrations added | None. SET_DRAFT uses existing versioned conversation-state JSONB; existing migrations verified fresh/upgrade by PostgreSQL tests. |
+| 30 | Validation results | lint/typecheck pass; unit/full default 284 passed, 172 skipped (171 database tests and one opt-in diagnostic); integration 54 passed; e2e script 2 passed; eval 85 passed, 1 skipped and 89/89 fixture assertions; PostgreSQL 171 passed; build and git diff --check pass. Live reports separate below. |
+| 31 | Remaining weak categories | Informal/typo factual routing; broader natural lifecycle/rest/off-sequence/replacement behavior; full semantic taxonomy; general pending parents/interruptions; broad pronouns; safe natural compound-action allowlist; complete typed response planning; broad provider-backed long-conversation evaluation; actual WhatsApp transcript evidence. |
+| 32 | Conversational MVP quality acceptable | **NO.** Measured supported live subset is below target and broad realistic semantic acceptance is missing. |
+| 33 | Robust workout conversation layer complete | **NO.** Required implementation and acceptance tasks remain open. |
+
+## Validation scope
+
+PostgreSQL ran against an isolated disposable local PostgreSQL 14 database, not the application database. `npm run test:e2e` currently runs two Vitest vertical-slice tests; it does not establish browser or live WhatsApp acceptance. Default `npm run test` deliberately skips database tests without the opt-in database configuration; those tests were separately run with `npm run test:postgres`.
+
+The corpus checks selected durable targets, actual values/counts, protected mutations, pending state, readonly snapshots, single-active-session invariants, confirmation gates, replay and restart. It does not substitute mocked semantic proposals for model-quality evidence. Existing invariant examples were expanded; exhaustive property-based generation for every requested invariant remains outstanding.
+
+Real Gemini results: [supported subset](reliability-live-gemini.json), [security subset](reliability-live-security.json). Seven injected fault types cover timeout, malformed output, invalid action, invalid safety envelope, low confidence, rate limit and upstream failure. Injection and hallucination cases are synthetic adversarial inputs. No phones or credentials are included in provider prompts; safe structured context is explicitly allowlisted. Diagnostic report captures include synthetic local user identifiers, which are stripped from actual provider payloads.
+
+## Artifact integrity
+
+An early live run overwrote the pre-existing untracked `live-conversation-baseline.json` because the runner shared its default output path. The previous 63 observations were recovered from the saved `live-conversation-assessment.json`; the recovered file is explicitly labeled and is **not a byte-exact restoration**. The assessment remains the original evidence. The runner now defaults to a separate reliability report and supports named output reports. Do not use the recovered baseline as untouched original evidence.
+
+## File inventory
+
+- AI boundary: `packages/ai/src/{interfaces.ts,prompt-registry.ts,structured-intent-interpreter.ts,structured-intent-interpreter.test.ts}`, `providers/gemini-structured-output-client{.ts,.contract.test.ts}`.
+- Contracts: `packages/contracts/src/ai/actions.ts`.
+- Domain: `packages/domain/src/conversation/{grammar.ts,state.ts,orchestrator.ts,orchestrator.test.ts,responses.ts,numeric-evidence.ts,numeric-evidence.test.ts}`, `corrections/correction-command.ts`, `messaging/history-query-parser{.ts,.test.ts}`, `observability/events.ts`, `workouts/workout-response{.ts,.test.ts}`.
+- Persistence: `packages/persistence/src/{conversation.ts,workout-lifecycle.ts}`.
+- Tests: `tests/fixtures/conversations/{scenarios.ts,reliability-corpus.ts}`, `tests/integration/ai/inbound-ai-fallback.test.ts`, `tests/postgres/{conversation.test.ts,release-hardening.test.ts,us4.test.ts,us5.test.ts,us6.test.ts}`.
+- Evaluation: `packages/evals/src/live-conversation-{acceptance.ts,corpus.ts,scoring.ts,scoring.test.ts}`; existing assessment source retained.
+- Documentation/configuration: `package.json`; feature `plan.md`, `tasks.md`, `data-model.md`, `contracts/ai-actions.md`, architecture audit, this report, schema diagnostics and labeled live result/iteration JSON artifacts. Generated Next.js environment-file churn was restored.
+
+No application deployment or outbound WhatsApp message was performed.

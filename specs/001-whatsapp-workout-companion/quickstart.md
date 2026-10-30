@@ -1,5 +1,31 @@
 # Quickstart: Plan Validation Guide
 
+## Domain Conversation Validation
+
+Use Node 22 and apply ordered migrations through `0010_conversation.sql` with `npm run db:migrate` before running the updated application. Existing users/workouts safely initialize conversation state on their next verified inbound message.
+
+```bash
+npm run test:conversation
+# TEST_DATABASE_URL must point to a disposable test database, never the application database.
+npm run test:conversation:postgres
+npm run test:postgres
+npm run eval
+```
+
+The PostgreSQL suite executes twenty semantic scenario families plus long messy conversation, nested clarification, short answers, cancellation/stale/replay/restart/foreign-target and upgrade tests. Fixtures assert state and forbidden mutations rather than exact conversational copy. Mock-provider tests require no key/network access; live provider commands remain opt-in. Missing or unsupported intent gets contextual recovery, not a generic action error. No Phase C policy changes are implied.
+
+## Self-Service WhatsApp Ownership
+
+Apply migrations through 0009 before using number verification. Set public `WHATSAPP_BUSINESS_NUMBER` to the actual business WhatsApp destination in E.164 (not the phone-number ID); existing Meta secret, signature and recipient-encryption configuration remains unchanged. No real credentials belong in .env.example.
+
+On `/onboarding` or `/routines`, enter an international number, explicitly opt in to workout messaging, and choose Verify on WhatsApp. Open WhatsApp uses a configured wa.me destination with `LINK <code>`. Send from the entered account within ten minutes. Only authenticated matching sender proof makes the status WhatsApp connected; typed numbers never establish recipients. Reload preserves pending status, not the code; choose Generate new verification explicitly if needed. To change a verified number choose Change WhatsApp number, prove the new number, and only then is the old link disconnected. Disconnect WhatsApp requires explicit confirmation.
+
+Run `TEST_DATABASE_URL=postgresql://LOCAL_TEST_DATABASE npm run test:whatsapp:ownership` for database/API ownership, replay/concurrency, rollback and populated migration coverage; `npm run test:whatsapp:transport` includes real application HTTP APIs -> signed webhook -> controlled provider -> workout completion. Run `npm run test:whatsapp:web` with the same test database for real desktop/mobile onboarding and number change/disconnect. Normal acceptance is offline: signed fixtures/fake provider, no live Meta/Gemini credentials or messages. See [ownership design](whatsapp-ownership-verification.md) for trust boundaries and bounded request/manual notification delivery.
+
+## Phase B Transport Validation
+
+Apply ordered migrations through 0008 before enabling `WHATSAPP_PROVIDER=cloud_api`. Configure the placeholder variables in .env.example through server-only secrets. Run `TEST_DATABASE_URL=postgresql://LOCAL_TEST_DATABASE npm run test:whatsapp:transport` for signed HTTP application -> PostgreSQL -> controllable provider acceptance, including replay/retry/restart. Normal tests require no live credentials. Operator report/retry and the deliberately opt-in, manually initiated live smoke are documented in [phase-b-transport.md](phase-b-transport.md). No historical false SENT record is automatically replayed; no Phase C decision is implied.
+
 This guide describes the validation scenarios the implementation should eventually support. It is not an implementation task list and does not include source code.
 
 ## Prerequisites
@@ -73,6 +99,64 @@ Expected outcome:
 
 ## Ambiguous AI Interpretation Validation
 
+AI infrastructure regression gate: run `npx -y node@22 --run eval` before accepting
+prompt, schema, model, or interpreter changes. This runs the offline mock-provider
+fixtures and boundary tests with a pass/fail report; it measures contract behavior,
+not live model accuracy. Normal tests require no API key or network.
+
+For an opt-in Gemini adapter smoke test, configure `AI_PROVIDER=gemini`,
+`GEMINI_API_KEY`, and `AI_MODEL=gemini-3.5-flash-lite`, then run
+`npx -y node@22 --run eval:real-provider`. The default model is `gemini-3.5-flash-lite`;
+`AI_MODEL` overrides it. Use an unbilled free-tier project and synthetic test data;
+quotas and data-handling terms are documented in research.md. OpenAI is optional
+future work, not a required key or paid fallback. The smoke test validates extracted fields, and failure
+fails the command. Live model quality remains unverified until this is run.
+
+The runtime now dispatches the scoped US4 correction, exercise/session mutation,
+custom identity/alias and permanent exercise-template actions. Pending yes/confirm
+and no/cancel resolution runs before interpretation. Later-story history questions,
+PRs, analytics and coaching execution remain deferred.
+
+### US4 Verification And Local History Editor
+
+Use Node 22 and an isolated PostgreSQL test database; the PostgreSQL tests recreate
+their test tables/schemas, so do not point `TEST_DATABASE_URL` at production data.
+
+```bash
+npm install
+npm run lint
+npm run typecheck
+npm run test
+npm run test:integration
+npm run test:e2e
+npm run eval
+TEST_DATABASE_URL=postgresql://user:password@localhost:5432/workout_test npm run test:postgres
+TEST_DATABASE_URL=postgresql://user:password@localhost:5432/workout_test npm run test:us4:web
+```
+
+The browser command starts/stops its own Next.js server on port 3104, uses a
+synthetic provider key without live calls, and writes desktop/mobile screenshots
+under ignored `test-results/`. It defaults to `/usr/bin/google-chrome`; set
+`CHROME_PATH` for a different installed Chromium browser.
+
+For manual use, configure `DATABASE_URL`, `AI_PROVIDER=gemini`, `GEMINI_API_KEY`,
+`AI_MODEL`, `WHATSAPP_APP_SECRET` and the deployed `APP_ORIGIN`. Apply migrations
+through `PostgresVerticalSliceApp.migrate()` before serving; it now tracks applied
+migrations and adopts an existing 0001 database. Export environment variables in
+the server process (the root `.env` is not automatically loaded by Next's app-dir
+server), then run `npm run dev`. `/history/:workoutId` edits an owned completed or
+incomplete workout. Authentication uses the existing signup endpoint's HttpOnly
+session cookie; no new login/onboarding UI is included in US4.
+
+US4 scenarios: `actually that was 9`, `incline set 2 was actually 10`,
+`delete last set`, `do Squat first`, `skip Squat today`,
+`replace incline with Squat` followed by `today only` or `update my routine`,
+`add Red chest machine today` followed by confirmation, and explicit destructive
+commands `delete exercise <exact-name>`, `delete workout <owned-id>` or
+`delete history all`. Protected proposals expire after ten minutes and fail safely
+when their versioned targets change. Broad date-based history deletion requests
+that cannot be uniquely resolved ask for more precise targets.
+
 Inputs that may use AI:
 
 - `bench is busy let's do shoulder press first`
@@ -142,6 +226,14 @@ Expected outcome:
 - Corrected classification changes future analytics.
 - No values are invented or model-generated.
 
+US6 executable validation: `TEST_DATABASE_URL=<disposable-postgres-url> npm run test:postgres` covers restart, current corrected/deleted records, classification changes and ownership. `TEST_DATABASE_URL=<disposable-postgres-url> npm run test:us6:web` covers desktop/mobile history and Overview/Muscles/Exercises views, manual classification, empty/error/auth states. Apply `0004_us6.sql` after `0003_us5.sql` on existing databases first. Periods are explicitly UTC (Monday weeks/calendar months); counts/frequency include completed sessions only, while valid recorded sets in completed/incomplete sessions contribute muscle sets/progression/last-trained. Classifications are user-private confirmed PRIMARY values, never guessed. Supported WhatsApp examples above use deterministic query routing; differently worded queries use validated Gemini intent only. Offline eval fixtures test boundaries, not live-model accuracy.
+
+## US7 Data-Control Validation
+
+Apply `0005_us7.sql` after `0004_us6.sql` on existing databases. With a disposable PostgreSQL database, run `TEST_DATABASE_URL=<url> npm run test:postgres` and `TEST_DATABASE_URL=<url> npm run test:us7:web` under Node 22. The web surface is `/settings/data`; ordinary review/correction continues through `/history`.
+
+Verify portable owner-only JSON categories, no credentials/raw-chat/operational secrets, export status and download; cross-user export/deletion/confirmation rejection; explicit deletion consent; stale/expired no-op; repeated/concurrent confirmation no-op after completion; restart-safe status; active/completed data removal from history/PRs/previous performance/analytics/questions; other users/shared definitions intact; revoked export snapshots and old webhook replay protection; invalidated sessions/links after account deletion. Only the original unexpired session can replay its exact completed account-deletion receipt without renewing access. No AI interpretation is used. Deletion implements soft inaccessibility, not a new retention or physical-erasure commitment.
+
 ## Webhook Security Validation
 
 Scenarios:
@@ -156,3 +248,15 @@ Expected outcome:
 - Invalid webhooks do not enter application processing.
 - Unlinked messages cannot mutate workout state.
 - Logs contain safe identifiers and error categories, not unnecessary raw chat content.
+
+## Conversational closure evaluation
+
+`npm run eval:conversation:closure` is explicitly opt-in, uses synthetic structured context and the configured Gemini key, and evaluates the current frozen v12 prompt on the 111-case semantic corpus. Set `CLOSURE_PROMPTS=v9,v12` to compare the frozen v9 baseline and v12 on the same hashed corpus. Default pacing is 13 seconds; provider failures count against accuracy. `CLOSURE_IDS=...` creates a distinct labeled subset run, never a canonical-baseline overwrite. Frozen v6-v11 remain available for intermediate comparisons.
+
+`CLOSURE_PROMPTS=v9 CLOSURE_CORPUS=historical-v3 npm run eval:conversation:closure` evaluates historical language plus alias, typo and unresolved-reference supplements. Keep the measured v2 corpus unchanged. The routing probe excludes deterministic diagnostic cases from semantic acceptance, and repeated cases are counted once when aggregating results.
+
+`node --import tsx packages/evals/src/closure-report.ts <baseline-artifact> <candidate-artifact> [supplement-artifacts...]` applies one scoring version to original observations and creates new reassessment/comparison artifacts. It checks identical baseline/candidate corpus hashes and IDs and forbids aggregation of different live prompts/models. It never edits its input artifacts. Model quality is reported separately from system safety; this command does not infer durable safety from model scores.
+
+`TEST_DATABASE_URL=<disposable-local-database> npm run test:whatsapp:conversations` executes 15 controlled authenticated transcript families plus historical-regression, alias-restart and permanent-confirmation cases through the production webhook route with signed provider payloads and accepted fake-provider delivery. Semantic proposals are mocked and reported as such. These are not captured human conversations or real Meta delivery.
+
+All evaluation writers use `evaluation-runs/<result-type>/<timestamp>_<uuid>_<checkpoint>.json`, exclusive create, and metadata for prompt/model/corpus/git/result type. Every checkpoint is immutable. Canonical baseline files are read-only inputs.

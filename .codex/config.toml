@@ -1,0 +1,19 @@
+# Shared Codex project configuration. Personal settings belong in ~/.codex/config.toml.
+# Policy: docs/ai-policy.md §4–5. Instructions: AGENTS.md.
+
+# Ask before anything outside the sandbox; never auto-approve everything.
+approval_policy = "on-request"
+# Write only inside the workspace; "danger-full-access" is forbidden outside a disposable container.
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+# No network from agent shells; a human runs `npm ci` and other networked commands.
+network_access = false
+exclude_tmpdir_env_var = false
+exclude_slash_tmp = false
+
+[shell_environment_policy]
+# Do not leak credentials from the developer's environment into agent shells.
+inherit = "core"
+exclude = ["*KEY*", "*TOKEN*", "*SECRET*", "*PASSWORD*", "DATABASE_URL", "AWS_*", "GEMINI_*", "WHATSAPP_*"]
+set = { NODE_ENV = "test" }

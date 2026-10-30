@@ -1,0 +1,94 @@
+[
+  {
+    "id": "exercise-confirmed-alias-reuse",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-018a"],
+    "conversationContext": { "knownExerciseRefs": ["Incline Dumbbell Press"], "confirmedAliases": { "incline db": "Incline Dumbbell Press" } },
+    "userInput": "incline db 45 each 10",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.exerciseRef": "Incline Dumbbell Press", "set.loadSemantics": "PER_HAND_PER_SIDE" },
+    "expectedConfirmationRequired": false,
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "exerciseRef": "Incline Dumbbell Press", "loadValue": 45, "weightUnit": "KG", "loadSemantics": "PER_HAND_PER_SIDE", "reps": 10 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["CONFIRMED_ALIAS"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "exercise-alias-conflict",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-018b"],
+    "conversationContext": { "knownExerciseRefs": ["Bench Press", "Machine Chest Press"] },
+    "userInput": "press 80x8",
+    "expectedAction": { "type": "UNKNOWN" },
+    "expectedClarification": "Which exercise did you mean by press?",
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "UNKNOWN", "reason": "Alias matches multiple exercise identities." },
+      "confidence": "medium",
+      "requiresClarification": true,
+      "clarificationQuestion": "Which exercise did you mean by press?",
+      "rationaleCodes": ["ALIAS_CONFLICT"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "exercise-first-time-custom",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-014", "FR-016"],
+    "conversationContext": { "knownExerciseRefs": ["Squat"] },
+    "userInput": "red hammer press 40x12",
+    "expectedAction": { "type": "CREATE_CUSTOM_EXERCISE" },
+    "expectedFields": { "name": "red hammer press" },
+    "expectedConfirmationRequired": true,
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "CREATE_CUSTOM_EXERCISE", "name": "red hammer press" },
+      "confidence": "medium",
+      "requiresClarification": false,
+      "rationaleCodes": ["FIRST_TIME_CUSTOM_EXERCISE"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "exercise-similar-identities-remain-separate",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-018h"],
+    "conversationContext": { "knownExerciseRefs": ["Bench Press", "Incline Bench Press"] },
+    "userInput": "incline bench 60x8",
+    "expectedAction": { "type": "LOG_SET" },
+    "expectedFields": { "set.exerciseRef": "Incline Bench Press" },
+    "forbiddenOutcomes": ["autoMergedSimilarExercise"],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "LOG_SET", "set": { "exerciseRef": "Incline Bench Press", "loadValue": 60, "weightUnit": "KG", "loadSemantics": "TOTAL_LOAD", "reps": 8 } },
+      "confidence": "high",
+      "requiresClarification": false,
+      "rationaleCodes": ["SIMILAR_BUT_DISTINCT"],
+      "forbiddenDirectMutation": true
+    }
+  },
+  {
+    "id": "exercise-no-automatic-merge",
+    "schemaVersion": "eval-case.v1",
+    "requirementRefs": ["FR-018h"],
+    "conversationContext": { "knownExerciseRefs": ["Lat Pulldown", "Assisted Pullup"] },
+    "userInput": "merge pulldowns and pullups",
+    "expectedAction": { "type": "UNKNOWN" },
+    "expectedClarification": "Exercise merges require explicit confirmation in the app.",
+    "expectedConfirmationRequired": false,
+    "forbiddenOutcomes": ["identityMerged"],
+    "mockProviderOutput": {
+      "schemaVersion": "workout-action.v1",
+      "action": { "type": "UNKNOWN", "reason": "Identity merge cannot be performed by AI interpretation." },
+      "confidence": "high",
+      "requiresClarification": true,
+      "clarificationQuestion": "Exercise merges require explicit confirmation in the app.",
+      "rationaleCodes": ["NO_AUTOMATIC_MERGE"],
+      "forbiddenDirectMutation": true
+    }
+  }
+]

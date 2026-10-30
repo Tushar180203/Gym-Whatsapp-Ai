@@ -1,5 +1,20 @@
 # Data Model: WhatsApp Workout Companion
 
+Reliability extension (2026-10-09): SET_DRAFT adds evidenced load/unit/count and the exact current session-exercise ID to the bounded typed continuation union. Existing JSONB schema accepts this additive locally validated frame; no SQL migration is required. Factual/social interruptions do not pop it. Logical expiry, workout identity/version and active-exercise checks protect subsequent reps. Logging during a single unconfirmed replacement can refresh its version only when the original source still exists in the same workout; protected confirmation versions are never refreshed by this rule.
+
+## ConversationState (2026-10-08)
+
+Migration `0010_conversation.sql` adds one `conversation_states` row per product user, with a user foreign key, matching relational/JSON versions, bounded JSON continuation stack and updated timestamp. `ConversationStateSchema` is the local authority for its typed shape; it is not model-authored memory.
+
+- Mode derives from the durable workout: IDLE, WORKOUT_PROPOSED, WORKOUT_ACTIVE, WORKOUT_FINISH_PENDING.
+- Up to three typed frames preserve replacement source/replacement/scope, custom confirmation ID, target candidates, numeric-field/load questions, factual-query subjects and workout selection/replacement choices.
+- Pending frames carry a ten-minute logical expiry and workout ID/version. Recent exercise/set IDs and a bounded last question support references. A recent temporary replacement can retain a typed future routine-change proposal for ten minutes, still requiring explicit permanent intent and existing confirmation/version policy.
+- `lastEventAt` prevents a strictly older authenticated provider timestamp from overwriting newer conversation state. Same-second events use the existing serialized owner transaction, not a claimed provider total order.
+- No raw transcript, phone address, provider credentials or unrestricted model reasoning is stored here. Operational conversation state is not added to portable workout exports. Existing workout/account data deletion clears the row. Logical expiry is not a new physical-erasure/retention commitment.
+- Legacy users without a row default safely from their current workout. No current workout, routine cursor or history snapshot is rewritten during upgrade.
+
+See [conversation-orchestration.md](conversation-orchestration.md) for routing, continuations and test evidence.
+
 **Feature**: [spec.md](./spec.md)  
 **Date**: 2026-10-06
 
@@ -79,6 +94,7 @@
 ### OutboundDeliveryStatus
 
 - `PENDING`
+- `SENDING` (durable attempt reservation; Phase B)
 - `SENT`
 - `FAILED_RETRYABLE`
 - `FAILED_FINAL`
@@ -209,6 +225,7 @@ Validation rules:
 - Active `(provider, providerAccountId, providerUserIdentityHash)` must map to at most one active product user link.
 - Active `(whatsAppProviderAccountId, providerUserIdentityHash)` must be unique.
 - Raw `wa_id` or phone number is not stored by default; use `providerUserIdentityHash` plus last 4 digits for display.
+- Phase B technically requires provider-private encrypted addressing and signed inbound timestamp in `whatsapp_recipient_addresses`, keyed by identity ID. Raw addressing is never a domain/AI/history/export field. See phase-b-transport.md; no retention/erasure commitment is implied.
 - The same provider account can contain many user identities.
 
 ### WhatsAppIdentityLink
@@ -223,12 +240,17 @@ Fields:
 - `status`
 - `linkedAt`
 - `revokedAt`
+- `verifiedAt` (required for VERIFIED/REVOKED proven links)
+- `maskedNumber`
+- `optInAt` (explicit product messaging consent; legacy proven links may have no timestamp)
+- `verificationChallengeId` (owner-consistent FK to AccountLinkToken; null for legacy proof)
 
 Validation rules:
 
 - Active `whatsAppProviderUserIdentityId` must be unique so one active provider user identity cannot belong to multiple product users.
 - Multiple product users may link through the same `WhatsAppProviderAccount`, as long as each has a distinct active `WhatsAppProviderUserIdentity`.
 - Workout-affecting inbound messages from unlinked identities are rejected or safely ignored.
+- Status is VERIFIED or REVOKED, consistent with revokedAt. PENDING claims reside in AccountLinkToken, never in trusted recipient storage. One number-bound verified link per user; existing legacy links are preserved. Replacement revokes prior links only after new proof succeeds. Recipient resolution and commands require a live owner and active VERIFIED link.
 
 ### AccountLinkToken
 
@@ -243,10 +265,14 @@ Fields:
 - `consumedAt`
 - `createdAt`
 
+Ownership-verification extension (migration 0009): `expectedProviderIdentityHash`, `maskedNumber`, `status` (PENDING/CONSUMED/SUPERSEDED/EXPIRED), `changeIntent`, `optInAt`, `attemptCount` (bounded audit counter). The website address is normalized then discarded; code plaintext is returned once, never persisted. One PENDING token per user; creating a new one supersedes the old. Legacy unconsumed unbound tokens become SUPERSEDED; previously consumed tokens remain CONSUMED. Existing Meta-proven links/recipient ciphertext are preserved.
+
 Validation rules:
 
 - Single-use.
 - Expired tokens cannot create links.
+- Sender hash must match the expected claim in constant time; wrong sender cannot consume it. The owner, challenge and identity are locked/revalidated in one transaction with verified link, consumed timestamp, authenticated-sender recipient encryption and notification intents. Production consented verification cannot succeed without the transaction-bound recipient writer. Inbound/outbound link references have composite owner FKs; old queued replies cannot follow a revoked link.
+- Outbound notification intents reuse OutboundMessage with optional inbound reference, unique notificationKey, notificationLinkId, ownerGeneration and createdAt. The LINK reply is WELCOME; WORKOUT_PLAN_READY is keyed by verified link/routine/version. These are not analytics or a queue/worker system.
 
 ### Routine
 
@@ -649,6 +675,7 @@ Validation rules:
 
 - Outbound responses are correlated to inbound processing when applicable.
 - Duplicate inbound retries reuse the recorded outbound result when already sent.
+- Phase B migration 0008 adds recipient identity, provider acceptance ID, bounded attempt timing/count, safe-retry/reconciliation state and minimal receipt metadata. SENT requires provider evidence; unknown attempts and legacy false SENT cannot automatically replay. See phase-b-transport.md.
 
 ### DataControlRequest
 
@@ -741,3 +768,5 @@ Rules:
 - `MuscleAnalyticsService`: weekly primary-muscle sets with confirmed classification.
 - `WorkoutAnalyticsService`: frequency, completed count, last-trained dates, monthly counts.
 - `HistoryQuestionService`: bounded factual answers from persisted records.
+
+Closure continuation: ALIAS is an additive JSONB frame with alias, owned target reference and TARGET/NAME slot. It uses the existing three-frame bound, expiry, owner lock and workout version guard; no migration or new table. Name clarification goes through semantic interpretation so greetings/questions cannot become aliases. Confirmation remains the existing single-use durable identity operation.
