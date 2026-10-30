@@ -52,7 +52,7 @@
     "test:reminders:web": "playwright test -c tests/e2e/reminders/playwright.config.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.3",
+    "drizzle-orm": "^0.45.4",
     "libphonenumber-js": "^1.13.14",
     "lucide-react": "^1.52.0",
     "next": "^16.4.0",
