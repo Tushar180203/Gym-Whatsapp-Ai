@@ -6,7 +6,7 @@ import { boundedRequestBody } from "../../../apps/web/server/http.js";
 
 const services = vi.hoisted(() => ({ signUp: vi.fn(), signIn: vi.fn(), configure: vi.fn() }));
 vi.mock("../../../apps/web/server/app.js", () => ({ productionApp: () => services }));
-vi.mock("../../../apps/web/server/rate-limit.js", () => ({ limitRequest: vi.fn() }));
+vi.mock("../../../apps/web/server/rate-limit.js", () => ({ limitRequest: vi.fn(), limitAuthAttempt: vi.fn() }));
 
 const credentials = { email: "validation@example.com", password: "correct horse battery staple" };
 const request = (body: string, contentType = "application/json", headers: Record<string, string> = {}) =>

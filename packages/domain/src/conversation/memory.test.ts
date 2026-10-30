@@ -18,7 +18,15 @@ describe("local conversation memory", () => {
   it("excludes verification credentials and bounds remembered text", () => {
     expect(memoryText("LINK secret-token")).toBeNull();
     expect(memoryText("my api_key=credential")).toBeNull();
-    expect(memoryText("hello me@example.com +919876543210")).toBe("hello [email] [phone]");
+    expect(memoryText("hello me@example.com +15550101234")).toBe("hello [email] [phone]");
     expect(memoryText("x".repeat(2000))).toHaveLength(1000);
+  });
+  it("redacts phone numbers written without a + but keeps set notation", () => {
+    for (const phone of ["555 010 1234", "5550101234", "(555) 010-1234", "1 555 010 1234", "+1 (555) 010-1234"]) {
+      expect(memoryText(`text me at ${phone} later`)).toBe("text me at [phone] later");
+    }
+    for (const sets of ["45x10", "10 10 10 10", "45 kg for 10, 10, 8", "100 100 90 90", "same 9"]) {
+      expect(memoryText(sets)).toBe(sets);
+    }
   });
 });

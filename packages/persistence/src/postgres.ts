@@ -119,8 +119,9 @@ export class PostgresVerticalSliceApp {
     const row = (await this.pool.query<{ id: string; password_hash: string }>(
       `select id, password_hash from users where email = $1 and deleted_at is null`, [email.trim().toLowerCase()]
     )).rows[0];
-    // Hash against a throwaway value for unknown emails so response time does not reveal which accounts exist.
-    const valid = verifyPassword(password, row?.password_hash ?? hashPassword("unknown-account-placeholder"));
+    // Unknown emails verify against a precomputed hash: both paths cost exactly one scrypt,
+    // so response time does not reveal which accounts exist.
+    const valid = verifyPassword(password, row?.password_hash ?? UNKNOWN_ACCOUNT_HASH);
     if (!row || !valid) throw new DomainError("Invalid credentials", "INVALID_CREDENTIALS");
     const sessionToken = token();
     await this.pool.query(
@@ -810,6 +811,8 @@ function hashPassword(password: string): string {
   const hash = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${hash}`;
 }
+
+const UNKNOWN_ACCOUNT_HASH = hashPassword(randomBytes(16).toString("hex"));
 
 export function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(":");

@@ -2,9 +2,11 @@ import { productionApp } from "../../../../server/app.js";
 
 import { signupRequestSchema } from "../../../../../../packages/contracts/src/api/requests.js";
 import { readJsonBody, apiResponse, sessionCookie } from "../../../../server/http.js";
+import { limitAuthAttempt } from "../../../../server/rate-limit.js";
 export async function POST(request: Request) {
   const response = await apiResponse(request, async () => {
     const input = signupRequestSchema.parse(await readJsonBody(request));
+    limitAuthAttempt(input.email);
     return productionApp().signUp(input.email, input.password);
   });
   if (!response.ok) return response;
